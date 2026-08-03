@@ -18,35 +18,35 @@
     <div class="container mx-auto p-6">
         
         <!-- Tela de Acesso (Login / Cadastro) -->
-<div id="loginScreen" class="max-w-md mx-auto bg-white p-8 rounded shadow-md mt-10">
-    <!-- Abas de Navegação -->
-    <div class="flex border-b mb-6">
-        <button id="tabLoginBtn" onclick="switchTab('login')" class="w-1/2 py-2 font-bold border-b-2 border-blue-600 text-blue-600">Entrar</button>
-        <button id="tabRegisterBtn" onclick="switchTab('register')" class="w-1/2 py-2 font-bold text-gray-500">Criar Conta</button>
-    </div>
+        <div id="loginScreen" class="max-w-md mx-auto bg-white p-8 rounded shadow-md mt-10">
+            <!-- Abas de Navegação -->
+            <div class="flex border-b mb-6">
+                <button id="tabLoginBtn" onclick="switchTab('login')" class="w-1/2 py-2 font-bold border-b-2 border-blue-600 text-blue-600">Entrar</button>
+                <button id="tabRegisterBtn" onclick="switchTab('register')" class="w-1/2 py-2 font-bold text-gray-500">Criar Conta</button>
+            </div>
 
-    <!-- Formulário de Login -->
-    <form id="formLogin" onsubmit="event.preventDefault(); login();">
-        <input type="email" id="email" placeholder="E-mail" required class="w-full p-2 mb-4 border rounded">
-        <input type="password" id="password" placeholder="Senha" required class="w-full p-2 mb-6 border rounded">
-        <button type="submit" class="w-full bg-blue-700 text-white font-bold py-2 rounded hover:bg-blue-800">Entrar</button>
-    </form>
+            <!-- Formulário de Login -->
+            <form id="formLogin" onsubmit="event.preventDefault(); login();">
+                <input type="email" id="email" placeholder="E-mail" required class="w-full p-2 mb-4 border rounded">
+                <input type="password" id="password" placeholder="Senha" required class="w-full p-2 mb-6 border rounded">
+                <button type="submit" class="w-full bg-blue-700 text-white font-bold py-2 rounded hover:bg-blue-800">Entrar</button>
+            </form>
 
-    <!-- Formulário de Cadastro (Oculto por padrão) -->
-    <form id="formRegister" class="hidden" onsubmit="event.preventDefault(); register();">
-        <input type="text" id="regName" placeholder="Nome Completo" required class="w-full p-2 mb-4 border rounded">
-        <input type="email" id="regEmail" placeholder="E-mail" required class="w-full p-2 mb-4 border rounded">
-        <input type="password" id="regPassword" placeholder="Senha (mín. 6 caracteres)" required class="w-full p-2 mb-4 border rounded">
-        
-        <label class="block text-sm font-medium mb-1">Perfil de Acesso</label>
-        <select id="regRole" class="w-full p-2 mb-6 border rounded">
-            <option value="leader">Líder / Gestor</option>
-            <option value="onsite">Equipe Onsite</option>
-        </select>
-        
-        <button type="submit" class="w-full bg-green-600 text-white font-bold py-2 rounded hover:bg-green-700">Cadastrar</button>
-    </form>
-</div>
+            <!-- Formulário de Cadastro (Oculto por padrão) -->
+            <form id="formRegister" class="hidden" onsubmit="event.preventDefault(); register();">
+                <input type="text" id="regName" placeholder="Nome Completo" required class="w-full p-2 mb-4 border rounded">
+                <input type="email" id="regEmail" placeholder="E-mail" required class="w-full p-2 mb-4 border rounded">
+                <input type="password" id="regPassword" placeholder="Senha (mín. 6 caracteres)" required class="w-full p-2 mb-4 border rounded">
+                
+                <label class="block text-sm font-medium mb-1">Perfil de Acesso</label>
+                <select id="regRole" class="w-full p-2 mb-6 border rounded">
+                    <option value="leader">Líder / Gestor</option>
+                    <option value="onsite">Equipe Onsite</option>
+                </select>
+                
+                <button type="submit" class="w-full bg-green-600 text-white font-bold py-2 rounded hover:bg-green-700">Cadastrar</button>
+            </form>
+        </div>
 
         <!-- Tela do Líder (Solicitação) -->
         <div id="leaderScreen" class="hidden max-w-2xl mx-auto bg-white p-8 rounded shadow-md mt-4">
@@ -129,7 +129,47 @@
         let currentProfile = null;
         let reasonsData = [];
 
-        // 2. Lógica de Autenticação
+        // 2. Alternar entre Login e Cadastro
+        function switchTab(tab) {
+            if (tab === 'login') {
+                document.getElementById('formLogin').classList.remove('hidden');
+                document.getElementById('formRegister').classList.add('hidden');
+                document.getElementById('tabLoginBtn').className = "w-1/2 py-2 font-bold border-b-2 border-blue-600 text-blue-600";
+                document.getElementById('tabRegisterBtn').className = "w-1/2 py-2 font-bold text-gray-500";
+            } else {
+                document.getElementById('formLogin').classList.add('hidden');
+                document.getElementById('formRegister').classList.remove('hidden');
+                document.getElementById('tabRegisterBtn').className = "w-1/2 py-2 font-bold border-b-2 border-green-600 text-green-600";
+                document.getElementById('tabLoginBtn').className = "w-1/2 py-2 font-bold text-gray-500";
+            }
+        }
+
+        // 3. Autenticação e Cadastro
+        async function register() {
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const fullName = document.getElementById('regName').value;
+            const role = document.getElementById('regRole').value;
+
+            const { data, error } = await supabase.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        full_name: fullName,
+                        role: role
+                    }
+                }
+            });
+
+            if (error) {
+                alert('Erro ao realizar cadastro: ' + error.message);
+            } else {
+                alert('Cadastro realizado com sucesso! Você já pode fazer login.');
+                switchTab('login');
+            }
+        }
+
         async function login() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -147,8 +187,15 @@
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 currentUser = user;
-                // Busca o perfil para saber se é leader ou onsite
-                const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+                
+                // Busca o perfil no banco
+                const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+                
+                if (error || !profile) {
+                    alert('Usuário autenticado, mas o perfil ainda não foi registrado na tabela profiles. Verifique se a Trigger foi criada no Supabase.');
+                    return;
+                }
+
                 currentProfile = profile;
                 
                 document.getElementById('loginScreen').classList.add('hidden');
@@ -169,7 +216,7 @@
             location.reload();
         });
 
-        // 3. Funções do Líder
+        // 4. Funções do Líder
         async function loadReasons() {
             const { data, error } = await supabase.from('penalty_reasons').select('*');
             if (data) {
@@ -216,9 +263,8 @@
             }
         }
 
-        // 4. Funções do Onsite
+        // 5. Funções do Onsite
         async function loadRequests() {
-            // Busca apenas os pendentes, trazendo o nome da alínea junto
             const { data, error } = await supabase
                 .from('disciplinary_requests')
                 .select('*, penalty_reasons(code)')
@@ -233,7 +279,7 @@
                         <tr class="border-b hover:bg-gray-50">
                             <td class="p-3">${req.employee_name} <br><span class="text-xs text-gray-500">${req.location}</span></td>
                             <td class="p-3 font-semibold">${req.penalty_type}</td>
-                            <td class="p-3 text-sm">${req.penalty_reasons.code}</td>
+                            <td class="p-3 text-sm">${req.penalty_reasons ? req.penalty_reasons.code : '-'}</td>
                             <td class="p-3 text-sm">${req.issue_date.split('-').reverse().join('/')}</td>
                             <td class="p-3 text-center">
                                 <button onclick="generateDoc('${req.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">GERAR DOCUMENTO</button>
@@ -245,8 +291,6 @@
         }
 
         async function generateDoc(requestId) {
-            // Aqui entra a lógica de geração de PDF. 
-            // Para acionar o processo, mudamos o status para 'gerado'.
             const { error } = await supabase
                 .from('disciplinary_requests')
                 .update({ status: 'gerado', document_url: 'url_do_pdf_gerado.pdf' })
@@ -254,52 +298,12 @@
 
             if (!error) {
                 alert('Documento gerado e disponibilizado para o líder!');
-                loadRequests(); // Atualiza a tabela tirando o item da fila
+                loadRequests();
             }
         }
 
-        // Verifica se há sessão ativa ao carregar a página
+        // Checagem inicial
         window.onload = checkUser;
-        // Alternar entre abas de Login e Cadastro
-function switchTab(tab) {
-    if (tab === 'login') {
-        document.getElementById('formLogin').classList.remove('hidden');
-        document.getElementById('formRegister').classList.add('hidden');
-        document.getElementById('tabLoginBtn').className = "w-1/2 py-2 font-bold border-b-2 border-blue-600 text-blue-600";
-        document.getElementById('tabRegisterBtn').className = "w-1/2 py-2 font-bold text-gray-500";
-    } else {
-        document.getElementById('formLogin').classList.add('hidden');
-        document.getElementById('formRegister').classList.remove('hidden');
-        document.getElementById('tabRegisterBtn').className = "w-1/2 py-2 font-bold border-b-2 border-green-600 text-green-600";
-        document.getElementById('tabLoginBtn').className = "w-1/2 py-2 font-bold text-gray-500";
-    }
-}
-
-// Cadastro direto pelo site
-async function register() {
-    const email = document.getElementById('regEmail').value;
-    const password = document.getElementById('regPassword').value;
-    const fullName = document.getElementById('regName').value;
-    const role = document.getElementById('regRole').value;
-
-    const { data, error } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-        options: {
-            data: {
-                full_name: fullName,
-                role: role
-            }
-        }
-    });
-
-    if (error) {
-        alert('Erro ao realizar cadastro: ' + error.message);
-    } else {
-        alert('Cadastro realizado com sucesso! Você já pode fazer login.');
-        switchTab('login');
-    }
-}
     </script>
 </body>
 </html>
