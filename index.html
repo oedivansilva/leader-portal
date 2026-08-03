@@ -120,7 +120,7 @@
     </div>
 
     <script>
-        // 1. Inicialização do Supabase
+        // 1. Inicialização do Supabase (Apenas UMA vez)
         const SUPABASE_URL = 'https://gagedjappvouhbsfzlmd.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhZ2VkamFwcHZvdWhic2Z6bG1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NDkzMzYsImV4cCI6MjEwMTMyNTMzNn0.3Z4mM8ZWxjQ7TTPYtY_GY7yqlVcSkvxmRxYyfy-Wmpg';
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -131,16 +131,21 @@
 
         // 2. Alternar entre Login e Cadastro
         function switchTab(tab) {
+            const formLogin = document.getElementById('formLogin');
+            const formRegister = document.getElementById('formRegister');
+            const tabLoginBtn = document.getElementById('tabLoginBtn');
+            const tabRegisterBtn = document.getElementById('tabRegisterBtn');
+
             if (tab === 'login') {
-                document.getElementById('formLogin').classList.remove('hidden');
-                document.getElementById('formRegister').classList.add('hidden');
-                document.getElementById('tabLoginBtn').className = "w-1/2 py-2 font-bold border-b-2 border-blue-600 text-blue-600";
-                document.getElementById('tabRegisterBtn').className = "w-1/2 py-2 font-bold text-gray-500";
+                formLogin.classList.remove('hidden');
+                formRegister.classList.add('hidden');
+                tabLoginBtn.className = "w-1/2 py-2 font-bold border-b-2 border-blue-600 text-blue-600";
+                tabRegisterBtn.className = "w-1/2 py-2 font-bold text-gray-500";
             } else {
-                document.getElementById('formLogin').classList.add('hidden');
-                document.getElementById('formRegister').classList.remove('hidden');
-                document.getElementById('tabRegisterBtn').className = "w-1/2 py-2 font-bold border-b-2 border-green-600 text-green-600";
-                document.getElementById('tabLoginBtn').className = "w-1/2 py-2 font-bold text-gray-500";
+                formLogin.classList.add('hidden');
+                formRegister.classList.remove('hidden');
+                tabRegisterBtn.className = "w-1/2 py-2 font-bold border-b-2 border-green-600 text-green-600";
+                tabLoginBtn.className = "w-1/2 py-2 font-bold text-gray-500";
             }
         }
 
@@ -188,11 +193,10 @@
             if (user) {
                 currentUser = user;
                 
-                // Busca o perfil no banco
                 const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
                 
                 if (error || !profile) {
-                    alert('Usuário autenticado, mas o perfil ainda não foi registrado na tabela profiles. Verifique se a Trigger foi criada no Supabase.');
+                    alert('Usuário autenticado, mas o perfil ainda não foi registrado na tabela profiles.');
                     return;
                 }
 
@@ -302,7 +306,6 @@
             }
         }
 
-        // Checagem inicial
         window.onload = checkUser;
     </script>
 </body>
