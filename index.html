@@ -48,8 +48,8 @@
             </form>
         </div>
 
-        <!-- Tela do Líder (Solicitação) -->
-        <div id="leaderScreen" class="hidden max-w-2xl mx-auto bg-white p-8 rounded shadow-md mt-4">
+        <!-- Tela do Líder (Solicitação e Acompanhamento) -->
+        <div id="leaderScreen" class="hidden max-w-3xl mx-auto bg-white p-8 rounded shadow-md mt-4">
             <h2 class="text-2xl font-bold mb-6 border-b pb-2">Nova Solicitação de Documento</h2>
             <form id="requestForm" onsubmit="submitRequest(event)">
                 <div class="grid grid-cols-2 gap-4 mb-4">
@@ -81,10 +81,17 @@
                 
                 <p id="reasonDesc" class="text-sm text-gray-500 bg-gray-100 p-2 rounded mb-4 hidden"></p>
 
+                <!-- Campo de Múltiplas Datas do Ocorrido -->
                 <div class="grid grid-cols-2 gap-4 mb-6">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Data do Ocorrido</label>
-                        <input type="date" id="incidentDate" required class="w-full p-2 border rounded">
+                        <label class="block text-sm font-medium mb-1">Datas do Ocorrido / Faltas</label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="date" id="incidentDateInput" class="w-full p-2 border rounded">
+                            <button type="button" onclick="addIncidentDate()" class="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 whitespace-nowrap">+ Adicionar</button>
+                        </div>
+                        <div id="selectedDatesList" class="flex flex-wrap gap-2 min-h-[42px] p-2 bg-gray-50 border rounded items-center">
+                            <span class="text-xs text-gray-400" id="noDatesMsg">Nenhuma data adicionada</span>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">Data de Emissão (Doc)</label>
@@ -92,8 +99,28 @@
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 rounded hover:bg-green-700">Solicitar Documento</button>
+                <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 rounded hover:bg-green-700 mb-8">Solicitar Documento</button>
             </form>
+
+            <!-- Tabela de Acompanhamento para o Líder -->
+            <div class="pt-6 border-t border-gray-200">
+                <h3 class="text-xl font-bold mb-4 text-gray-800">Minhas Solicitações</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 text-sm uppercase">
+                                <th class="p-3 border-b">Colaborador</th>
+                                <th class="p-3 border-b">Medida</th>
+                                <th class="p-3 border-b">Status</th>
+                                <th class="p-3 border-b text-center">Documento</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderRequestsTableBody">
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- Tela do Onsite (Gestão) -->
@@ -120,7 +147,7 @@
     </div>
 
     <script>
-    // 1. Inicialização do Supabase (utilizando 'supabaseClient' para evitar conflito)
+    // 1. Inicialização do Supabase
     const SUPABASE_URL = 'https://gagedjappvouhbsfzlmd.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhZ2VkamFwcHZvdWhic2Z6bG1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NDkzMzYsImV4cCI6MjEwMTMyNTMzNn0.3Z4mM8ZWxjQ7TTPYtY_GY7yqlVcSkvxmRxYyfy-Wmpg';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -128,6 +155,7 @@
     let currentUser = null;
     let currentProfile = null;
     let reasonsData = [];
+    let selectedDates = [];
 
     // 2. Alternar entre Login e Cadastro
     function switchTab(tab) {
@@ -208,6 +236,7 @@
             if (profile.role === 'leader') {
                 document.getElementById('leaderScreen').classList.remove('hidden');
                 loadReasons();
+                loadLeaderRequests();
             } else if (profile.role === 'onsite') {
                 document.getElementById('onsiteScreen').classList.remove('hidden');
                 loadRequests();
@@ -220,7 +249,45 @@
         location.reload();
     });
 
-    // 4. Funções do Líder
+    // 4. Gerenciamento de Datas Múltiplas
+    function addIncidentDate() {
+        const input = document.getElementById('incidentDateInput');
+        const val = input.value;
+        if (!val) return;
+        
+        if (!selectedDates.includes(val)) {
+            selectedDates.push(val);
+            renderSelectedDates();
+        }
+        input.value = '';
+    }
+
+    function removeIncidentDate(dateToRemove) {
+        selectedDates = selectedDates.filter(d => d !== dateToRemove);
+        renderSelectedDates();
+    }
+
+    function renderSelectedDates() {
+        const container = document.getElementById('selectedDatesList');
+        if (selectedDates.length === 0) {
+            container.innerHTML = '<span class="text-xs text-gray-400">Nenhuma data adicionada</span>';
+            return;
+        }
+        
+        const sortedDates = [...selectedDates].sort();
+        
+        container.innerHTML = sortedDates.map(d => {
+            const formatted = d.split('-').reverse().join('/');
+            return `
+                <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded flex items-center gap-1">
+                    ${formatted}
+                    <button type="button" onclick="removeIncidentDate('${d}')" class="text-blue-600 hover:text-red-600 font-bold ml-1">✕</button>
+                </span>
+            `;
+        }).join('');
+    }
+
+    // 5. Funções do Líder
     async function loadReasons() {
         const { data, error } = await supabaseClient.from('penalty_reasons').select('*');
         if (data) {
@@ -247,27 +314,79 @@
 
     async function submitRequest(e) {
         e.preventDefault();
+
+        if (selectedDates.length === 0) {
+            alert('Por favor, adicione pelo menos uma data de ocorrência.');
+            return;
+        }
+
+        const formattedDates = [...selectedDates]
+            .sort()
+            .map(d => d.split('-').reverse().join('/'))
+            .join(', ');
+
         const request = {
             leader_id: currentUser.id,
             employee_name: document.getElementById('empName').value,
             location: document.getElementById('location').value,
             penalty_type: document.getElementById('penaltyType').value,
             reason_id: document.getElementById('reasonId').value,
-            incident_date: document.getElementById('incidentDate').value,
+            incident_date: formattedDates,
             issue_date: document.getElementById('issueDate').value
         };
 
         const { error } = await supabaseClient.from('disciplinary_requests').insert([request]);
         
-        if (error) alert('Erro ao solicitar: ' + error.message);
-        else {
+        if (error) {
+            alert('Erro ao solicitar: ' + error.message);
+        } else {
             alert('Solicitação enviada com sucesso para o Onsite!');
             e.target.reset();
+            selectedDates = [];
+            renderSelectedDates();
             document.getElementById('reasonDesc').classList.add('hidden');
+            loadLeaderRequests();
         }
     }
 
-    // 5. Funções do Onsite
+    async function loadLeaderRequests() {
+        const { data, error } = await supabaseClient
+            .from('disciplinary_requests')
+            .select('*')
+            .eq('leader_id', currentUser.id)
+            .order('created_at', { ascending: false });
+
+        const tbody = document.getElementById('leaderRequestsTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (data && data.length > 0) {
+            data.forEach(req => {
+                const isReady = req.status === 'gerado' || req.status === 'concluido';
+                
+                const statusBadge = isReady
+                    ? '<span class="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded">Pronto</span>'
+                    : '<span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded">Pendente</span>';
+
+                const actionBtn = isReady && req.document_url
+                    ? `<a href="${req.document_url}" target="_blank" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 font-bold inline-block">Baixar PDF</a>`
+                    : '<span class="text-xs text-gray-400">Em processamento</span>';
+
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3 font-medium text-sm">${req.employee_name}</td>
+                        <td class="p-3 text-sm">${req.penalty_type}</td>
+                        <td class="p-3">${statusBadge}</td>
+                        <td class="p-3 text-center">${actionBtn}</td>
+                    </tr>
+                `;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-gray-400 text-sm">Nenhuma solicitação encontrada.</td></tr>';
+        }
+    }
+
+    // 6. Funções do Onsite
     async function loadRequests() {
         const { data, error } = await supabaseClient
             .from('disciplinary_requests')
