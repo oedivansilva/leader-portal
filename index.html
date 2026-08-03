@@ -120,193 +120,193 @@
     </div>
 
     <script>
-        // 1. Inicialização do Supabase (Apenas UMA vez)
-        const SUPABASE_URL = 'https://gagedjappvouhbsfzlmd.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhZ2VkamFwcHZvdWhic2Z6bG1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NDkzMzYsImV4cCI6MjEwMTMyNTMzNn0.3Z4mM8ZWxjQ7TTPYtY_GY7yqlVcSkvxmRxYyfy-Wmpg';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // 1. Inicialização do Supabase (utilizando 'supabaseClient' para evitar conflito)
+    const SUPABASE_URL = 'https://gagedjappvouhbsfzlmd.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhZ2VkamFwcHZvdWhic2Z6bG1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NDkzMzYsImV4cCI6MjEwMTMyNTMzNn0.3Z4mM8ZWxjQ7TTPYtY_GY7yqlVcSkvxmRxYyfy-Wmpg';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        let currentUser = null;
-        let currentProfile = null;
-        let reasonsData = [];
+    let currentUser = null;
+    let currentProfile = null;
+    let reasonsData = [];
 
-        // 2. Alternar entre Login e Cadastro
-        function switchTab(tab) {
-            const formLogin = document.getElementById('formLogin');
-            const formRegister = document.getElementById('formRegister');
-            const tabLoginBtn = document.getElementById('tabLoginBtn');
-            const tabRegisterBtn = document.getElementById('tabRegisterBtn');
+    // 2. Alternar entre Login e Cadastro
+    function switchTab(tab) {
+        const formLogin = document.getElementById('formLogin');
+        const formRegister = document.getElementById('formRegister');
+        const tabLoginBtn = document.getElementById('tabLoginBtn');
+        const tabRegisterBtn = document.getElementById('tabRegisterBtn');
 
-            if (tab === 'login') {
-                formLogin.classList.remove('hidden');
-                formRegister.classList.add('hidden');
-                tabLoginBtn.className = "w-1/2 py-2 font-bold border-b-2 border-blue-600 text-blue-600";
-                tabRegisterBtn.className = "w-1/2 py-2 font-bold text-gray-500";
-            } else {
-                formLogin.classList.add('hidden');
-                formRegister.classList.remove('hidden');
-                tabRegisterBtn.className = "w-1/2 py-2 font-bold border-b-2 border-green-600 text-green-600";
-                tabLoginBtn.className = "w-1/2 py-2 font-bold text-gray-500";
-            }
+        if (tab === 'login') {
+            formLogin.classList.remove('hidden');
+            formRegister.classList.add('hidden');
+            tabLoginBtn.className = "w-1/2 py-2 font-bold border-b-2 border-blue-600 text-blue-600";
+            tabRegisterBtn.className = "w-1/2 py-2 font-bold text-gray-500";
+        } else {
+            formLogin.classList.add('hidden');
+            formRegister.classList.remove('hidden');
+            tabRegisterBtn.className = "w-1/2 py-2 font-bold border-b-2 border-green-600 text-green-600";
+            tabLoginBtn.className = "w-1/2 py-2 font-bold text-gray-500";
         }
+    }
 
-        // 3. Autenticação e Cadastro
-        async function register() {
-            const email = document.getElementById('regEmail').value;
-            const password = document.getElementById('regPassword').value;
-            const fullName = document.getElementById('regName').value;
-            const role = document.getElementById('regRole').value;
+    // 3. Autenticação e Cadastro
+    async function register() {
+        const email = document.getElementById('regEmail').value;
+        const password = document.getElementById('regPassword').value;
+        const fullName = document.getElementById('regName').value;
+        const role = document.getElementById('regRole').value;
 
-            const { data, error } = await supabase.auth.signUp({
-                email: email,
-                password: password,
-                options: {
-                    data: {
-                        full_name: fullName,
-                        role: role
-                    }
-                }
-            });
-
-            if (error) {
-                alert('Erro ao realizar cadastro: ' + error.message);
-            } else {
-                alert('Cadastro realizado com sucesso! Você já pode fazer login.');
-                switchTab('login');
-            }
-        }
-
-        async function login() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-            
-            if (error) {
-                alert('Erro ao fazer login: ' + error.message);
-                return;
-            }
-            checkUser();
-        }
-
-        async function checkUser() {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                currentUser = user;
-                
-                const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-                
-                if (error || !profile) {
-                    alert('Usuário autenticado, mas o perfil ainda não foi registrado na tabela profiles.');
-                    return;
-                }
-
-                currentProfile = profile;
-                
-                document.getElementById('loginScreen').classList.add('hidden');
-                document.getElementById('btnLogout').classList.remove('hidden');
-
-                if (profile.role === 'leader') {
-                    document.getElementById('leaderScreen').classList.remove('hidden');
-                    loadReasons();
-                } else if (profile.role === 'onsite') {
-                    document.getElementById('onsiteScreen').classList.remove('hidden');
-                    loadRequests();
+        const { data, error } = await supabaseClient.auth.signUp({
+            email: email,
+            password: password,
+            options: {
+                data: {
+                    full_name: fullName,
+                    role: role
                 }
             }
-        }
-
-        document.getElementById('btnLogout').addEventListener('click', async () => {
-            await supabase.auth.signOut();
-            location.reload();
         });
 
-        // 4. Funções do Líder
-        async function loadReasons() {
-            const { data, error } = await supabase.from('penalty_reasons').select('*');
-            if (data) {
-                reasonsData = data;
-                const select = document.getElementById('reasonId');
-                select.innerHTML = '<option value="">Selecione...</option>';
-                data.forEach(r => {
-                    select.innerHTML += `<option value="${r.id}">${r.code} - ${r.title}</option>`;
-                });
-            }
+        if (error) {
+            alert('Erro ao realizar cadastro: ' + error.message);
+        } else {
+            alert('Cadastro realizado com sucesso! Você já pode fazer login.');
+            switchTab('login');
         }
+    }
 
-        function showReasonDesc() {
-            const id = document.getElementById('reasonId').value;
-            const descEl = document.getElementById('reasonDesc');
-            if (id) {
-                const reason = reasonsData.find(r => r.id == id);
-                descEl.textContent = reason.description;
-                descEl.classList.remove('hidden');
-            } else {
-                descEl.classList.add('hidden');
-            }
+    async function login() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        
+        if (error) {
+            alert('Erro ao fazer login: ' + error.message);
+            return;
         }
+        checkUser();
+    }
 
-        async function submitRequest(e) {
-            e.preventDefault();
-            const request = {
-                leader_id: currentUser.id,
-                employee_name: document.getElementById('empName').value,
-                location: document.getElementById('location').value,
-                penalty_type: document.getElementById('penaltyType').value,
-                reason_id: document.getElementById('reasonId').value,
-                incident_date: document.getElementById('incidentDate').value,
-                issue_date: document.getElementById('issueDate').value
-            };
-
-            const { error } = await supabase.from('disciplinary_requests').insert([request]);
+    async function checkUser() {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+            currentUser = user;
             
-            if (error) alert('Erro ao solicitar: ' + error.message);
-            else {
-                alert('Solicitação enviada com sucesso para o Onsite!');
-                e.target.reset();
-                document.getElementById('reasonDesc').classList.add('hidden');
+            const { data: profile, error } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
+            
+            if (error || !profile) {
+                alert('Usuário autenticado, mas o perfil ainda não foi registrado na tabela profiles.');
+                return;
             }
-        }
 
-        // 5. Funções do Onsite
-        async function loadRequests() {
-            const { data, error } = await supabase
-                .from('disciplinary_requests')
-                .select('*, penalty_reasons(code)')
-                .eq('status', 'pendente');
+            currentProfile = profile;
+            
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('btnLogout').classList.remove('hidden');
 
-            const tbody = document.getElementById('requestsTableBody');
-            tbody.innerHTML = '';
-
-            if (data) {
-                data.forEach(req => {
-                    tbody.innerHTML += `
-                        <tr class="border-b hover:bg-gray-50">
-                            <td class="p-3">${req.employee_name} <br><span class="text-xs text-gray-500">${req.location}</span></td>
-                            <td class="p-3 font-semibold">${req.penalty_type}</td>
-                            <td class="p-3 text-sm">${req.penalty_reasons ? req.penalty_reasons.code : '-'}</td>
-                            <td class="p-3 text-sm">${req.issue_date.split('-').reverse().join('/')}</td>
-                            <td class="p-3 text-center">
-                                <button onclick="generateDoc('${req.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">GERAR DOCUMENTO</button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            }
-        }
-
-        async function generateDoc(requestId) {
-            const { error } = await supabase
-                .from('disciplinary_requests')
-                .update({ status: 'gerado', document_url: 'url_do_pdf_gerado.pdf' })
-                .eq('id', requestId);
-
-            if (!error) {
-                alert('Documento gerado e disponibilizado para o líder!');
+            if (profile.role === 'leader') {
+                document.getElementById('leaderScreen').classList.remove('hidden');
+                loadReasons();
+            } else if (profile.role === 'onsite') {
+                document.getElementById('onsiteScreen').classList.remove('hidden');
                 loadRequests();
             }
         }
+    }
 
-        window.onload = checkUser;
-    </script>
+    document.getElementById('btnLogout').addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        location.reload();
+    });
+
+    // 4. Funções do Líder
+    async function loadReasons() {
+        const { data, error } = await supabaseClient.from('penalty_reasons').select('*');
+        if (data) {
+            reasonsData = data;
+            const select = document.getElementById('reasonId');
+            select.innerHTML = '<option value="">Selecione...</option>';
+            data.forEach(r => {
+                select.innerHTML += `<option value="${r.id}">${r.code} - ${r.title}</option>`;
+            });
+        }
+    }
+
+    function showReasonDesc() {
+        const id = document.getElementById('reasonId').value;
+        const descEl = document.getElementById('reasonDesc');
+        if (id) {
+            const reason = reasonsData.find(r => r.id == id);
+            descEl.textContent = reason.description;
+            descEl.classList.remove('hidden');
+        } else {
+            descEl.classList.add('hidden');
+        }
+    }
+
+    async function submitRequest(e) {
+        e.preventDefault();
+        const request = {
+            leader_id: currentUser.id,
+            employee_name: document.getElementById('empName').value,
+            location: document.getElementById('location').value,
+            penalty_type: document.getElementById('penaltyType').value,
+            reason_id: document.getElementById('reasonId').value,
+            incident_date: document.getElementById('incidentDate').value,
+            issue_date: document.getElementById('issueDate').value
+        };
+
+        const { error } = await supabaseClient.from('disciplinary_requests').insert([request]);
+        
+        if (error) alert('Erro ao solicitar: ' + error.message);
+        else {
+            alert('Solicitação enviada com sucesso para o Onsite!');
+            e.target.reset();
+            document.getElementById('reasonDesc').classList.add('hidden');
+        }
+    }
+
+    // 5. Funções do Onsite
+    async function loadRequests() {
+        const { data, error } = await supabaseClient
+            .from('disciplinary_requests')
+            .select('*, penalty_reasons(code)')
+            .eq('status', 'pendente');
+
+        const tbody = document.getElementById('requestsTableBody');
+        tbody.innerHTML = '';
+
+        if (data) {
+            data.forEach(req => {
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3">${req.employee_name} <br><span class="text-xs text-gray-500">${req.location}</span></td>
+                        <td class="p-3 font-semibold">${req.penalty_type}</td>
+                        <td class="p-3 text-sm">${req.penalty_reasons ? req.penalty_reasons.code : '-'}</td>
+                        <td class="p-3 text-sm">${req.issue_date.split('-').reverse().join('/')}</td>
+                        <td class="p-3 text-center">
+                            <button onclick="generateDoc('${req.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">GERAR DOCUMENTO</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+    }
+
+    async function generateDoc(requestId) {
+        const { error } = await supabaseClient
+            .from('disciplinary_requests')
+            .update({ status: 'gerado', document_url: 'url_do_pdf_gerado.pdf' })
+            .eq('id', requestId);
+
+        if (!error) {
+            alert('Documento gerado e disponibilizado para o líder!');
+            loadRequests();
+        }
+    }
+
+    window.onload = checkUser;
+</script>
 </body>
 </html>
