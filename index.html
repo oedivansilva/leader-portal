@@ -159,6 +159,18 @@
     let reasonsData = [];
     let selectedDates = [];
 
+    // Função Auxiliar: Formatação de data por extenso
+    function formatDateExtended(dateString) {
+        if (!dateString) return '';
+        const [year, month, day] = dateString.split('-');
+        const months = [
+            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+        const monthName = months[parseInt(month, 10) - 1];
+        return `${day} de ${monthName} de ${year}`;
+    }
+
     // 2. Alternar entre Login e Cadastro
     function switchTab(tab) {
         const formLogin = document.getElementById('formLogin');
@@ -371,7 +383,7 @@
                     : '<span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded">Pendente</span>';
 
                 const actionBtn = isReady && req.document_url
-                    ? `<a href="${req.document_url}" target="_blank" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 font-bold inline-block">Baixar PDF</a>`
+                    ? `<button onclick="openPDF('${req.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 font-bold inline-block">Baixar PDF</button>`
                     : '<span class="text-xs text-gray-400">Em processamento</span>';
 
                 tbody.innerHTML += `
@@ -389,75 +401,73 @@
     }
 
     // 6. Funções do Onsite
-   // 1. Nova função para converter e abrir o PDF com segurança (Blob URL)
-async function openPDF(requestId) {
-    const { data: req, error } = await supabaseClient
-        .from('disciplinary_requests')
-        .select('document_url')
-        .eq('id', requestId)
-        .single();
+    async function loadRequests() {
+        const { data, error } = await supabaseClient
+            .from('disciplinary_requests')
+            .select('*, penalty_reasons(*)')
+            .order('created_at', { ascending: false });
 
-    if (error || !req || !req.document_url) {
-        alert('Erro ao carregar o arquivo PDF.');
-        return;
-    }
+        const tbody = document.getElementById('requestsTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
 
-    try {
-        const base64Data = req.document_url.split(',')[1] || req.document_url;
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        
-        for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        if (data && data.length > 0) {
+            data.forEach(req => {
+                const reasonTitle = req.penalty_reasons ? req.penalty_reasons.title : 'N/A';
+                const formattedIssueDate = req.issue_date ? formatDateExtended(req.issue_date) : '-';
+                
+                let actionBtn = '';
+                if (req.status === 'gerado' || req.status === 'concluido') {
+                    actionBtn = `<button onclick="openPDF('${req.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 font-bold">Ver PDF</button>`;
+                } else {
+                    actionBtn = `<button onclick="generateDoc('${req.id}')" class="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 font-bold">Gerar PDF</button>`;
+                }
+
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3 font-medium text-sm">${req.employee_name}</td>
+                        <td class="p-3 text-sm">${req.penalty_type}</td>
+                        <td class="p-3 text-sm">${reasonTitle}</td>
+                        <td class="p-3 text-sm">${formattedIssueDate}</td>
+                        <td class="p-3 text-center">${actionBtn}</td>
+                    </tr>
+                `;
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-gray-400 text-sm">Nenhuma solicitação encontrada.</td></tr>';
         }
-        
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'application/pdf' });
-        const blobUrl = URL.createObjectURL(blob);
-        
-        window.open(blobUrl, '_blank');
-    } catch (e) {
-        alert('Erro ao processar o formato do documento.');
     }
-}
 
-// 2. Atualização da tabela do Líder para chamar a função openPDF
-async function loadLeaderRequests() {
-    const { data, error } = await supabaseClient
-        .from('disciplinary_requests')
-        .select('*')
-        .eq('leader_id', currentUser.id)
-        .order('created_at', { ascending: false });
+    async function openPDF(requestId) {
+        const { data: req, error } = await supabaseClient
+            .from('disciplinary_requests')
+            .select('document_url')
+            .eq('id', requestId)
+            .single();
 
-    const tbody = document.getElementById('leaderRequestsTableBody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
+        if (error || !req || !req.document_url) {
+            alert('Erro ao carregar o arquivo PDF.');
+            return;
+        }
 
-    if (data && data.length > 0) {
-        data.forEach(req => {
-            const isReady = req.status === 'gerado' || req.status === 'concluido';
+        try {
+            const base64Data = req.document_url.split(',')[1] || req.document_url;
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Array(byteCharacters.length);
             
-            const statusBadge = isReady
-                ? '<span class="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded">Pronto</span>'
-                : '<span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded">Pendente</span>';
-
-            const actionBtn = isReady && req.document_url
-                ? `<button onclick="openPDF('${req.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 font-bold inline-block">Baixar PDF</button>`
-                : '<span class="text-xs text-gray-400">Em processamento</span>';
-
-            tbody.innerHTML += `
-                <tr class="border-b hover:bg-gray-50">
-                    <td class="p-3 font-medium text-sm">${req.employee_name}</td>
-                    <td class="p-3 text-sm">${req.penalty_type}</td>
-                    <td class="p-3">${statusBadge}</td>
-                    <td class="p-3 text-center">${actionBtn}</td>
-                </tr>
-            `;
-        });
-    } else {
-        tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-gray-400 text-sm">Nenhuma solicitação encontrada.</td></tr>';
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+            const blobUrl = URL.createObjectURL(blob);
+            
+            window.open(blobUrl, '_blank');
+        } catch (e) {
+            alert('Erro ao processar o formato do documento.');
+        }
     }
-}
 
     // GERAÇÃO AUTOMÁTICA DE PDF
     async function generateDoc(requestId) {
@@ -476,7 +486,7 @@ async function loadLeaderRequests() {
         const doc = new jsPDF();
         const isAdvertencia = req.penalty_type.toLowerCase().includes('advertência');
 
-        // Título e Local/Data
+        // Título e Local/Data por Extenso
         doc.setFont("helvetica", "bold");
         doc.setFontSize(14);
         const title = isAdvertencia ? "ADVERTÊNCIA DISCIPLINAR" : "CARTA DE SUSPENSÃO";
@@ -484,7 +494,10 @@ async function loadLeaderRequests() {
 
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
-        doc.text(`${req.location || 'Ananindeua'}, ${req.issue_date.split('-').reverse().join('/')}`, 20, 35);
+        
+        // Data formatada por extenso
+        const extendedDate = formatDateExtended(req.issue_date);
+        doc.text(`${req.location || 'Ananindeua'}, ${extendedDate}`, 20, 35);
 
         // Dados do Colaborador
         doc.setFont("helvetica", "bold");
