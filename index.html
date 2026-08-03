@@ -161,20 +161,16 @@
     </div>
 
     <script>
-    // Inicialização do Supabase (SUBSTITUA AS STRINGS ABAIXO PELAS SUAS CHAVES SE NECESSÁRIO)
+    // Inicialização do Supabase
     const SUPABASE_URL = 'https://gagedjappvouhbsfzlmd.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhZ2VkamFwcHZvdWhic2Z6bG1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NDkzMzYsImV4cCI6MjEwMTMyNTMzNn0.3Z4mM8ZWxjQ7TTPYtY_GY7yqlVcSkvxmRxYyfy-Wmpg';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // Configuração do EmailJS (Descomente e insira a public key para ativar)
-    // emailjs.init("SUA_PUBLIC_KEY");
 
     let currentUser = null;
     let currentProfile = null;
     let reasonsData = [];
     let selectedDates = [];
 
-    // URL direta para imagem do logo WeCan no Google Drive
     const WECAN_LOGO_URL = 'https://lh3.googleusercontent.com/d/1Bz8i5enG3uEI8TPkqOwNgODsEU86pR5V';
 
     function formatDateExtended(dateString) {
@@ -205,7 +201,6 @@
         });
     }
 
-    // Calcula largura e altura mantendo a proporção original da imagem
     function getScaledDimensions(origWidth, origHeight, maxWidth, maxHeight) {
         const ratio = Math.min(maxWidth / origWidth, maxHeight / origHeight);
         return {
@@ -214,7 +209,6 @@
         };
     }
 
-    // Obtém dimensões reais da imagem
     function getImageDetails(src) {
         return new Promise((resolve, reject) => {
             const img = new Image();
@@ -379,18 +373,6 @@
         }
     }
 
-    async function sendEmailNotification(requestData) {
-        /*
-        emailjs.send("SEU_SERVICE_ID", "SEU_TEMPLATE_ID", {
-            requested_by: currentProfile.full_name,
-            employee_name: requestData.employee_name,
-            penalty_type: requestData.penalty_type,
-            location: requestData.location
-        });
-        */
-        console.log("Notificação de e-mail disparada para o Onsite referente a:", requestData.employee_name);
-    }
-
     async function submitRequest(e) {
         e.preventDefault();
         if (selectedDates.length === 0) {
@@ -416,7 +398,6 @@
             alert('Erro ao solicitar: ' + error.message);
         } else {
             alert('Solicitação enviada com sucesso para o Onsite!');
-            sendEmailNotification(request);
             e.target.reset();
             selectedDates = [];
             renderSelectedDates();
@@ -498,6 +479,7 @@
         }
     }
 
+    // ABERTURA DIRETA DA URL DO SUPABASE STORAGE
     async function openPDF(requestId) {
         const { data: req } = await supabaseClient
             .from('disciplinary_requests')
@@ -505,22 +487,15 @@
             .eq('id', requestId)
             .single();
 
-        if (!req || !req.document_url) { alert('Erro ao carregar o PDF.'); return; }
-
-        try {
-            const base64Data = req.document_url.split(',')[1] || req.document_url;
-            const byteCharacters = atob(base64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: 'application/pdf' });
-            window.open(URL.createObjectURL(blob), '_blank');
-        } catch (e) {
-            alert('Erro ao processar o formato do documento.');
+        if (!req || !req.document_url) { 
+            alert('Erro ao carregar a URL do PDF.'); 
+            return; 
         }
+
+        window.open(req.document_url, '_blank');
     }
 
-    // GERAÇÃO E ASSINATURA AUTOMÁTICA DE PDF COM PROPORÇÃO DE IMAGEM CORRIGIDA
+    // GERAÇÃO E UPLOAD DO PDF PARA O SUPABASE STORAGE
     async function generateDoc(requestId) {
         if (!currentProfile.signature_url) {
             alert('Você precisa cadastrar sua assinatura digital no topo da página antes de assinar o documento.');
@@ -539,12 +514,11 @@
         const doc = new jsPDF();
         const isAdvertencia = req.penalty_type.toLowerCase().includes('advertência');
 
-        // Logo da WeCan (Proporcional - Limites Máximos: 45x15mm)
+        // Logo
         try {
             const logoBase64 = await getBase64ImageFromUrl(WECAN_LOGO_URL);
             const logoDetails = await getImageDetails(logoBase64);
             const logoSize = getScaledDimensions(logoDetails.width, logoDetails.height, 45, 15);
-            
             doc.addImage(logoBase64, 'PNG', 15, 10, logoSize.width, logoSize.height);
         } catch (err) {
             console.warn('Não foi possível carregar a imagem do logo:', err);
@@ -590,12 +564,10 @@
         const ySign = 160;
         doc.text("Atenciosamente,", 20, ySign);
 
-        // Assinatura Digital Onsite (Proporcional - Limites Máximos: 50x18mm)
         if (currentProfile.signature_url) {
             try {
                 const sigDetails = await getImageDetails(currentProfile.signature_url);
                 const sigSize = getScaledDimensions(sigDetails.width, sigDetails.height, 50, 18);
-                
                 doc.addImage(currentProfile.signature_url, 'PNG', 20, ySign + 2, sigSize.width, sigSize.height);
             } catch (err) {
                 console.warn('Erro ao carregar dimensão da assinatura:', err);
@@ -614,20 +586,41 @@
         doc.line(115, ySign + 45, 190, ySign + 45);
         doc.text("Testemunha 2", 115, ySign + 50);
 
-        const pdfDataUrl = doc.output('datauristring');
+        // 1. Converte o documento gerado em um Blob binário
+        const pdfBlob = doc.output('blob');
+        const fileName = `doc_${requestId}_${Date.now()}.pdf`;
 
+        // 2. Faz o upload do arquivo para o bucket 'disciplinary-docs'
+        const { error: uploadError } = await supabaseClient.storage
+            .from('disciplinary-docs')
+            .upload(fileName, pdfBlob, {
+                contentType: 'application/pdf',
+                upsert: true
+            });
+
+        if (uploadError) {
+            alert('Erro ao enviar o PDF para o armazenamento: ' + uploadError.message);
+            return;
+        }
+
+        // 3. Obtém a URL pública do arquivo recém-enviado
+        const { data: { publicUrl } } = supabaseClient.storage
+            .from('disciplinary-docs')
+            .getPublicUrl(fileName);
+
+        // 4. Salva o link da URL pública no banco de dados
         const { error: updateError } = await supabaseClient
             .from('disciplinary_requests')
             .update({ 
                 status: 'gerado', 
-                document_url: pdfDataUrl 
+                document_url: publicUrl 
             })
             .eq('id', requestId);
 
         if (updateError) {
-            alert('Erro ao salvar documento assinado: ' + updateError.message);
+            alert('Erro ao atualizar registro da solicitação: ' + updateError.message);
         } else {
-            alert('Documento assinado e disponibilizado para o gestor!');
+            alert('Documento assinado, salvo no Storage e disponibilizado para o gestor!');
             loadRequests();
         }
     }
