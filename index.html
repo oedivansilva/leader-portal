@@ -260,6 +260,46 @@
 
         // Verifica se há sessão ativa ao carregar a página
         window.onload = checkUser;
+        // Alternar entre abas de Login e Cadastro
+function switchTab(tab) {
+    if (tab === 'login') {
+        document.getElementById('formLogin').classList.remove('hidden');
+        document.getElementById('formRegister').classList.add('hidden');
+        document.getElementById('tabLoginBtn').className = "w-1/2 py-2 font-bold border-b-2 border-blue-600 text-blue-600";
+        document.getElementById('tabRegisterBtn').className = "w-1/2 py-2 font-bold text-gray-500";
+    } else {
+        document.getElementById('formLogin').classList.add('hidden');
+        document.getElementById('formRegister').classList.remove('hidden');
+        document.getElementById('tabRegisterBtn').className = "w-1/2 py-2 font-bold border-b-2 border-green-600 text-green-600";
+        document.getElementById('tabLoginBtn').className = "w-1/2 py-2 font-bold text-gray-500";
+    }
+}
+
+// Cadastro direto pelo site
+async function register() {
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
+    const fullName = document.getElementById('regName').value;
+    const role = document.getElementById('regRole').value;
+
+    const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+            data: {
+                full_name: fullName,
+                role: role
+            }
+        }
+    });
+
+    if (error) {
+        alert('Erro ao realizar cadastro: ' + error.message);
+    } else {
+        alert('Cadastro realizado com sucesso! Você já pode fazer login.');
+        switchTab('login');
+    }
+}
     </script>
 </body>
 </html>
