@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal do Líder - Medidas Disciplinares</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+    <!-- Navegação -->
+    <nav class="bg-blue-800 text-white p-4 shadow-md flex justify-between items-center">
+        <h1 class="text-xl font-bold">Portal do Líder</h1>
+        <button id="btnLogout" class="hidden bg-red-600 px-4 py-2 rounded text-sm hover:bg-red-700">Sair</button>
+    </nav>
+
+    <div class="container mx-auto p-6">
+        
+        <!-- Tela de Login -->
+        <div id="loginScreen" class="max-w-md mx-auto bg-white p-8 rounded shadow-md mt-10">
+            <h2 class="text-2xl font-bold mb-6 text-center">Acesso ao Sistema</h2>
+            <input type="email" id="email" placeholder="E-mail" class="w-full p-2 mb-4 border rounded">
+            <input type="password" id="password" placeholder="Senha" class="w-full p-2 mb-6 border rounded">
+            <button onclick="login()" class="w-full bg-blue-700 text-white font-bold py-2 rounded hover:bg-blue-800">Entrar</button>
+        </div>
+
+        <!-- Tela do Líder (Solicitação) -->
+        <div id="leaderScreen" class="hidden max-w-2xl mx-auto bg-white p-8 rounded shadow-md mt-4">
+            <h2 class="text-2xl font-bold mb-6 border-b pb-2">Nova Solicitação de Documento</h2>
+            <form id="requestForm" onsubmit="submitRequest(event)">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nome do Colaborador</label>
+                        <input type="text" id="empName" required class="w-full p-2 border rounded">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Local/Site</label>
+                        <input type="text" id="location" required class="w-full p-2 border rounded">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Tipo de Medida</label>
+                        <select id="penaltyType" required class="w-full p-2 border rounded">
+                            <option value="Advertência">Advertência Escrita</option>
+                            <option value="Suspensão">Suspensão</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Alínea (Motivo)</label>
+                        <select id="reasonId" onchange="showReasonDesc()" required class="w-full p-2 border rounded">
+                            <!-- Preenchido via JS -->
+                        </select>
+                    </div>
+                </div>
+                
+                <p id="reasonDesc" class="text-sm text-gray-500 bg-gray-100 p-2 rounded mb-4 hidden"></p>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Data do Ocorrido</label>
+                        <input type="date" id="incidentDate" required class="w-full p-2 border rounded">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Data de Emissão (Doc)</label>
+                        <input type="date" id="issueDate" required class="w-full p-2 border rounded">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 rounded hover:bg-green-700">Solicitar Documento</button>
+            </form>
+        </div>
+
+        <!-- Tela do Onsite (Gestão) -->
+        <div id="onsiteScreen" class="hidden bg-white p-8 rounded shadow-md mt-4">
+            <h2 class="text-2xl font-bold mb-6 border-b pb-2">Painel Onsite - Solicitações Pendentes</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 text-sm uppercase">
+                            <th class="p-3 border-b">Colaborador</th>
+                            <th class="p-3 border-b">Medida</th>
+                            <th class="p-3 border-b">Motivo</th>
+                            <th class="p-3 border-b">Data Doc.</th>
+                            <th class="p-3 border-b text-center">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requestsTableBody">
+                        <!-- Preenchido via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 1. Inicialização do Supabase
+        const SUPABASE_URL = 'SUA_URL_AQUI';
+        const SUPABASE_ANON_KEY = 'SUA_CHAVE_AQUI';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+        let currentProfile = null;
+        let reasonsData = [];
+
+        // 2. Lógica de Autenticação
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            
+            if (error) {
+                alert('Erro ao fazer login: ' + error.message);
+                return;
+            }
+            checkUser();
+        }
+
+        async function checkUser() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                currentUser = user;
+                // Busca o perfil para saber se é leader ou onsite
+                const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+                currentProfile = profile;
+                
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('btnLogout').classList.remove('hidden');
+
+                if (profile.role === 'leader') {
+                    document.getElementById('leaderScreen').classList.remove('hidden');
+                    loadReasons();
+                } else if (profile.role === 'onsite') {
+                    document.getElementById('onsiteScreen').classList.remove('hidden');
+                    loadRequests();
+                }
+            }
+        }
+
+        document.getElementById('btnLogout').addEventListener('click', async () => {
+            await supabase.auth.signOut();
+            location.reload();
+        });
+
+        // 3. Funções do Líder
+        async function loadReasons() {
+            const { data, error } = await supabase.from('penalty_reasons').select('*');
+            if (data) {
+                reasonsData = data;
+                const select = document.getElementById('reasonId');
+                select.innerHTML = '<option value="">Selecione...</option>';
+                data.forEach(r => {
+                    select.innerHTML += `<option value="${r.id}">${r.code} - ${r.title}</option>`;
+                });
+            }
+        }
+
+        function showReasonDesc() {
+            const id = document.getElementById('reasonId').value;
+            const descEl = document.getElementById('reasonDesc');
+            if (id) {
+                const reason = reasonsData.find(r => r.id == id);
+                descEl.textContent = reason.description;
+                descEl.classList.remove('hidden');
+            } else {
+                descEl.classList.add('hidden');
+            }
+        }
+
+        async function submitRequest(e) {
+            e.preventDefault();
+            const request = {
+                leader_id: currentUser.id,
+                employee_name: document.getElementById('empName').value,
+                location: document.getElementById('location').value,
+                penalty_type: document.getElementById('penaltyType').value,
+                reason_id: document.getElementById('reasonId').value,
+                incident_date: document.getElementById('incidentDate').value,
+                issue_date: document.getElementById('issueDate').value
+            };
+
+            const { error } = await supabase.from('disciplinary_requests').insert([request]);
+            
+            if (error) alert('Erro ao solicitar: ' + error.message);
+            else {
+                alert('Solicitação enviada com sucesso para o Onsite!');
+                e.target.reset();
+                document.getElementById('reasonDesc').classList.add('hidden');
+            }
+        }
+
+        // 4. Funções do Onsite
+        async function loadRequests() {
+            // Busca apenas os pendentes, trazendo o nome da alínea junto
+            const { data, error } = await supabase
+                .from('disciplinary_requests')
+                .select('*, penalty_reasons(code)')
+                .eq('status', 'pendente');
+
+            const tbody = document.getElementById('requestsTableBody');
+            tbody.innerHTML = '';
+
+            if (data) {
+                data.forEach(req => {
+                    tbody.innerHTML += `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-3">${req.employee_name} <br><span class="text-xs text-gray-500">${req.location}</span></td>
+                            <td class="p-3 font-semibold">${req.penalty_type}</td>
+                            <td class="p-3 text-sm">${req.penalty_reasons.code}</td>
+                            <td class="p-3 text-sm">${req.issue_date.split('-').reverse().join('/')}</td>
+                            <td class="p-3 text-center">
+                                <button onclick="generateDoc('${req.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">GERAR DOCUMENTO</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        async function generateDoc(requestId) {
+            // Aqui entra a lógica de geração de PDF. 
+            // Para acionar o processo, mudamos o status para 'gerado'.
+            const { error } = await supabase
+                .from('disciplinary_requests')
+                .update({ status: 'gerado', document_url: 'url_do_pdf_gerado.pdf' })
+                .eq('id', requestId);
+
+            if (!error) {
+                alert('Documento gerado e disponibilizado para o líder!');
+                loadRequests(); // Atualiza a tabela tirando o item da fila
+            }
+        }
+
+        // Verifica se há sessão ativa ao carregar a página
+        window.onload = checkUser;
+    </script>
+</body>
+</html>
