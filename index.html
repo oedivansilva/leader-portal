@@ -389,31 +389,75 @@
     }
 
     // 6. Funções do Onsite
-    async function loadRequests() {
-        const { data, error } = await supabaseClient
-            .from('disciplinary_requests')
-            .select('*, penalty_reasons(code)')
-            .eq('status', 'pendente');
+   // 1. Nova função para converter e abrir o PDF com segurança (Blob URL)
+async function openPDF(requestId) {
+    const { data: req, error } = await supabaseClient
+        .from('disciplinary_requests')
+        .select('document_url')
+        .eq('id', requestId)
+        .single();
 
-        const tbody = document.getElementById('requestsTableBody');
-        tbody.innerHTML = '';
-
-        if (data) {
-            data.forEach(req => {
-                tbody.innerHTML += `
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="p-3">${req.employee_name} <br><span class="text-xs text-gray-500">${req.location}</span></td>
-                        <td class="p-3 font-semibold">${req.penalty_type}</td>
-                        <td class="p-3 text-sm">${req.penalty_reasons ? req.penalty_reasons.code : '-'}</td>
-                        <td class="p-3 text-sm">${req.issue_date.split('-').reverse().join('/')}</td>
-                        <td class="p-3 text-center">
-                            <button onclick="generateDoc('${req.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">GERAR DOCUMENTO</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
+    if (error || !req || !req.document_url) {
+        alert('Erro ao carregar o arquivo PDF.');
+        return;
     }
+
+    try {
+        const base64Data = req.document_url.split(',')[1] || req.document_url;
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(blob);
+        
+        window.open(blobUrl, '_blank');
+    } catch (e) {
+        alert('Erro ao processar o formato do documento.');
+    }
+}
+
+// 2. Atualização da tabela do Líder para chamar a função openPDF
+async function loadLeaderRequests() {
+    const { data, error } = await supabaseClient
+        .from('disciplinary_requests')
+        .select('*')
+        .eq('leader_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+    const tbody = document.getElementById('leaderRequestsTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (data && data.length > 0) {
+        data.forEach(req => {
+            const isReady = req.status === 'gerado' || req.status === 'concluido';
+            
+            const statusBadge = isReady
+                ? '<span class="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded">Pronto</span>'
+                : '<span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded">Pendente</span>';
+
+            const actionBtn = isReady && req.document_url
+                ? `<button onclick="openPDF('${req.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 font-bold inline-block">Baixar PDF</button>`
+                : '<span class="text-xs text-gray-400">Em processamento</span>';
+
+            tbody.innerHTML += `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="p-3 font-medium text-sm">${req.employee_name}</td>
+                    <td class="p-3 text-sm">${req.penalty_type}</td>
+                    <td class="p-3">${statusBadge}</td>
+                    <td class="p-3 text-center">${actionBtn}</td>
+                </tr>
+            `;
+        });
+    } else {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-gray-400 text-sm">Nenhuma solicitação encontrada.</td></tr>';
+    }
+}
 
     // GERAÇÃO AUTOMÁTICA DE PDF
     async function generateDoc(requestId) {
