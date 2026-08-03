@@ -6,6 +6,8 @@
     <title>Portal do Líder - Medidas Disciplinares</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Biblioteca jsPDF para geração automática de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
 
@@ -67,7 +69,7 @@
                     <div>
                         <label class="block text-sm font-medium mb-1">Tipo de Medida</label>
                         <select id="penaltyType" required class="w-full p-2 border rounded">
-                            <option value="Advertência">Advertência Escrita</option>
+                            <option value="Advertência Escrita">Advertência Escrita</option>
                             <option value="Suspensão">Suspensão</option>
                         </select>
                     </div>
@@ -413,14 +415,89 @@
         }
     }
 
+    // GERAÇÃO AUTOMÁTICA DE PDF
     async function generateDoc(requestId) {
-        const { error } = await supabaseClient
+        const { data: req, error: fetchError } = await supabaseClient
             .from('disciplinary_requests')
-            .update({ status: 'gerado', document_url: 'url_do_pdf_gerado.pdf' })
+            .select('*, penalty_reasons(*)')
+            .eq('id', requestId)
+            .single();
+
+        if (fetchError || !req) {
+            alert('Erro ao carregar dados da solicitação.');
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const isAdvertencia = req.penalty_type.toLowerCase().includes('advertência');
+
+        // Título e Local/Data
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        const title = isAdvertencia ? "ADVERTÊNCIA DISCIPLINAR" : "CARTA DE SUSPENSÃO";
+        doc.text(title, 105, 25, { align: "center" });
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${req.location || 'Ananindeua'}, ${req.issue_date.split('-').reverse().join('/')}`, 20, 35);
+
+        // Dados do Colaborador
+        doc.setFont("helvetica", "bold");
+        doc.text(`ADVERTIMOS: ${req.employee_name.toUpperCase()}`, 20, 50);
+        doc.setFont("helvetica", "normal");
+
+        const alineCode = req.penalty_reasons ? req.penalty_reasons.code : 'H';
+        const reasonDesc = req.penalty_reasons ? req.penalty_reasons.description : 'Faltas injustificadas';
+
+        // Texto legal
+        let bodyText = "";
+        if (isAdvertencia) {
+            bodyText = `Em conformidade com o ARTIGO 482 alínea ${alineCode} da C.L.T., vimos adverti-lo pelo seguinte motivo:\n\n` +
+                       `Ato de indisciplina: ${reasonDesc} ocorridas em: ${req.incident_date}.\n\n` +
+                       `Esperamos que tome as providências necessárias para que a irregularidade acima não se repita. ` +
+                       `Aproveitamos para esclarecer que a repetição ou prática de condutas semelhantes poderá resultar em penalidades ` +
+                       `mais severas, inclusive a demissão por justa causa, conforme previsto no Artigo 482 e suas alíneas da CLT.`;
+        } else {
+            bodyText = `Pela presente fica V.Sa. suspenso das atividades laborais em razão das irregularidades em virtude de ` +
+                       `${reasonDesc} ocorridas nas datas: ${req.incident_date}.\n\n` +
+                       `Lembramos que a reincidência deste comportamento poderá resultar em justa causa conforme artigo 482 da CLT.`;
+        }
+
+        const splitBody = doc.splitTextToSize(bodyText, 170);
+        doc.text(splitBody, 20, 65);
+
+        // Assinaturas
+        const ySign = 160;
+        doc.text("Atenciosamente,", 20, ySign);
+        
+        doc.line(20, ySign + 20, 95, ySign + 20);
+        doc.text("WE CAN BR – TRABALHO TEMPORARIO LTDA", 20, ySign + 25);
+
+        doc.line(115, ySign + 20, 190, ySign + 20);
+        doc.text("Assinatura do Colaborador", 115, ySign + 25);
+
+        doc.line(20, ySign + 45, 95, ySign + 45);
+        doc.text("Testemunha 1", 20, ySign + 50);
+
+        doc.line(115, ySign + 45, 190, ySign + 45);
+        doc.text("Testemunha 2", 115, ySign + 50);
+
+        // Converter para URI e salvar no banco
+        const pdfDataUrl = doc.output('datauristring');
+
+        const { error: updateError } = await supabaseClient
+            .from('disciplinary_requests')
+            .update({ 
+                status: 'gerado', 
+                document_url: pdfDataUrl 
+            })
             .eq('id', requestId);
 
-        if (!error) {
-            alert('Documento gerado e disponibilizado para o líder!');
+        if (updateError) {
+            alert('Erro ao salvar o documento: ' + updateError.message);
+        } else {
+            alert('Documento PDF gerado com sucesso!');
             loadRequests();
         }
     }
