@@ -7,6 +7,19 @@ function formatDateExtended(dateString){
   return `${day} de ${months[Number(month)-1]} de ${year}`
 }
 
+function formatDateBR(dateString){
+  if(!dateString)return '____/____/________'
+  const [year,month,day]=dateString.split('-')
+  return `${day}/${month}/${year}`
+}
+
+function nextDay(dateString){
+  if(!dateString)return ''
+  const date=new Date(`${dateString}T12:00:00`)
+  date.setDate(date.getDate()+1)
+  return date.toISOString().slice(0,10)
+}
+
 function getBase64ImageFromUrl(url){
   return new Promise((resolve,reject)=>{
     const img=new Image()
@@ -79,7 +92,7 @@ window.generateDisciplinaryPDF=async function(request,signature){
     const duration=days===3?'3 (três) dias':'1 (um) dia'
     body='Pela presente fica V.Sa. suspenso das atividades laborais em razão das irregularidades em virtude de '+
       `${reason} ocorridas nas datas: ${request.incident_date}.\n\n`+
-      `Em razão da conduta, fica aplicada a suspensão disciplinar pelo período de ${duration}.\n\n`+
+      `Em razão da conduta, fica aplicada a suspensão disciplinar pelo período de ${duration} a partir de ${formatDateBR(request.suspension_start_date||nextDay(request.issue_date))}.\n\n`+
       'Lembramos que a reincidência deste comportamento poderá resultar em justa causa conforme artigo 482 da CLT.'
   }
 
