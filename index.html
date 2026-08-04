@@ -13,7 +13,13 @@
     <!-- Navegação -->
     <nav class="bg-blue-800 text-white p-4 shadow-md flex justify-between items-center">
         <h1 class="text-xl font-bold">Portal do Líder</h1>
-        <button id="btnLogout" class="hidden bg-red-600 px-4 py-2 rounded text-sm hover:bg-red-700">Sair</button>
+        <div id="userNav" class="hidden flex items-center gap-4">
+            <div class="text-right leading-tight">
+                <p id="welcomeUser" class="font-semibold text-sm"></p>
+                <p id="userRoleLabel" class="text-xs text-blue-200"></p>
+            </div>
+            <button id="btnLogout" class="bg-red-600 px-4 py-2 rounded text-sm hover:bg-red-700">Sair</button>
+        </div>
     </nav>
 
     <div class="container mx-auto p-6">
@@ -149,6 +155,70 @@
             </div>
         </div>
 
+        <!-- Tela do Administrador -->
+        <div id="adminScreen" class="hidden space-y-6 mt-4">
+            <div class="bg-white p-6 rounded shadow-md">
+                <h2 class="text-2xl font-bold mb-5 border-b pb-2">Cadastros Administrativos</h2>
+                <div class="grid md:grid-cols-3 gap-5">
+                    <form onsubmit="createClient(event)" class="p-4 border rounded">
+                        <h3 class="font-bold mb-3">Novo cliente</h3>
+                        <input id="adminClientName" required placeholder="Nome do cliente" class="w-full p-2 border rounded mb-3">
+                        <button class="w-full bg-blue-700 text-white p-2 rounded">Cadastrar cliente</button>
+                    </form>
+                    <form onsubmit="createShift(event)" class="p-4 border rounded">
+                        <h3 class="font-bold mb-3">Novo turno</h3>
+                        <input id="adminShiftName" required placeholder="Ex.: 1º Turno" class="w-full p-2 border rounded mb-3">
+                        <button class="w-full bg-blue-700 text-white p-2 rounded">Cadastrar turno</button>
+                    </form>
+                    <form onsubmit="createOperation(event)" class="p-4 border rounded">
+                        <h3 class="font-bold mb-3">Nova operação</h3>
+                        <select id="adminOperationClient" required class="w-full p-2 border rounded mb-2"></select>
+                        <input id="adminCostCenter" required placeholder="Centro de custo" class="w-full p-2 border rounded mb-2">
+                        <input id="adminDepartment" required placeholder="Departamento / HUB / SOC" class="w-full p-2 border rounded mb-3">
+                        <button class="w-full bg-blue-700 text-white p-2 rounded">Cadastrar operação</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded shadow-md">
+                <h2 class="text-2xl font-bold mb-5 border-b pb-2">Cadastrar usuário</h2>
+                <form id="adminUserForm" onsubmit="createPortalUser(event)" class="grid md:grid-cols-2 gap-4">
+                    <input id="adminUserName" required placeholder="Nome completo" class="p-2 border rounded">
+                    <input id="adminUserEmail" type="email" required placeholder="E-mail" class="p-2 border rounded">
+                    <input id="adminUserPhone" required placeholder="Celular" class="p-2 border rounded">
+                    <select id="adminUserRole" required onchange="toggleAdminUserFields()" class="p-2 border rounded">
+                        <option value="leader">Líder / Gestor</option>
+                        <option value="onsite">Onsite</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                    <div id="leaderOperationBox">
+                        <label class="block text-sm mb-1">Departamento / HUB / SOC</label>
+                        <select id="adminLeaderOperation" class="w-full p-2 border rounded"></select>
+                    </div>
+                    <div id="leaderShiftBox">
+                        <label class="block text-sm mb-1">Turno</label>
+                        <select id="adminLeaderShift" class="w-full p-2 border rounded"></select>
+                    </div>
+                    <div id="onsiteOperationsBox" class="hidden md:col-span-2">
+                        <label class="block text-sm mb-1">Departamentos / HUBs / SOCs atendidos</label>
+                        <select id="adminOnsiteOperations" multiple size="8" class="w-full p-2 border rounded"></select>
+                        <p class="text-xs text-gray-500 mt-1">Use Ctrl (Windows) ou Command (Mac) para selecionar mais de uma operação.</p>
+                    </div>
+                    <button id="adminCreateUserButton" class="md:col-span-2 bg-green-600 text-white font-bold p-3 rounded">Criar usuário e enviar convite</button>
+                </form>
+            </div>
+
+            <div class="bg-white p-6 rounded shadow-md">
+                <h2 class="text-2xl font-bold mb-5 border-b pb-2">Solicitações aguardando atribuição</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead><tr class="bg-gray-100 text-sm uppercase"><th class="p-3">Colaborador</th><th class="p-3">Operação</th><th class="p-3">Medida</th><th class="p-3">Onsite</th><th class="p-3">Ação</th></tr></thead>
+                        <tbody id="adminAssignmentTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -161,6 +231,11 @@
     let currentProfile = null;
     let reasonsData = [];
     let selectedDates = [];
+    let clientsData = [];
+    let operationsData = [];
+    let shiftsData = [];
+    let onsiteProfilesData = [];
+    let onsiteOperationsData = [];
 
     const WECAN_LOGO_URL = 'https://lh3.googleusercontent.com/d/1Bz8i5enG3uEI8TPkqOwNgODsEU86pR5V';
 
@@ -256,16 +331,24 @@
                 return;
             }
             document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('btnLogout').classList.remove('hidden');
+            const displayName = profile.full_name?.trim() || user.email.split('@')[0];
+            document.getElementById('welcomeUser').textContent = `Bem-vindo, ${displayName}`;
+            const roleLabels = { leader: 'Líder / Gestor', onsite: 'Equipe Onsite', admin: 'Administrador' };
+            document.getElementById('userRoleLabel').textContent = roleLabels[profile.role] || profile.role;
+            document.getElementById('userNav').classList.remove('hidden');
 
             if (profile.role === 'leader') {
                 document.getElementById('leaderScreen').classList.remove('hidden');
                 loadReasons();
                 loadLeaderRequests();
+                loadLeaderContext();
             } else if (profile.role === 'onsite') {
                 document.getElementById('onsiteScreen').classList.remove('hidden');
                 renderSignaturePreview();
                 loadRequests();
+            } else if (profile.role === 'admin') {
+                document.getElementById('adminScreen').classList.remove('hidden');
+                loadAdminData();
             }
         }
     }
@@ -302,6 +385,18 @@
         if (currentProfile && currentProfile.signature_url) {
             document.getElementById('signaturePreview').src = currentProfile.signature_url;
             document.getElementById('signaturePreviewBox').classList.remove('hidden');
+        }
+    }
+
+    async function loadLeaderContext() {
+        if (!currentProfile.operation_id) return;
+        const { data: operation } = await supabaseClient
+            .from('operations').select('department').eq('id', currentProfile.operation_id).single();
+        if (operation) {
+            const locationInput = document.getElementById('location');
+            locationInput.value = operation.department;
+            locationInput.readOnly = true;
+            locationInput.classList.add('bg-gray-100');
         }
     }
 
@@ -375,6 +470,8 @@
             reason_id: document.getElementById('reasonId').value,
             incident_date: formattedDates,
             issue_date: document.getElementById('issueDate').value,
+            operation_id: currentProfile.operation_id,
+            status: 'aguardando_atribuicao',
             suspension_days: document.getElementById('penaltyType').value === 'Suspensão'
                 ? Number(document.getElementById('suspensionDays').value)
                 : null
@@ -385,7 +482,7 @@
         if (error) {
             alert('Erro ao solicitar: ' + error.message);
         } else {
-            alert('Solicitação enviada com sucesso para o Onsite!');
+            alert('Solicitação enviada com sucesso para atribuição do administrador!');
             e.target.reset();
             selectedDates = [];
             renderSelectedDates();
@@ -434,6 +531,7 @@
         const { data } = await supabaseClient
             .from('disciplinary_requests')
             .select('*, penalty_reasons(*)')
+            .eq('assigned_onsite_id', currentUser.id)
             .order('created_at', { ascending: false });
 
         const tbody = document.getElementById('requestsTableBody');
@@ -465,6 +563,142 @@
         } else {
             tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-gray-400 text-sm">Nenhuma solicitação encontrada.</td></tr>';
         }
+    }
+
+    async function loadAdminData() {
+        const [clientsResult, operationsResult, shiftsResult, onsiteResult, linksResult] = await Promise.all([
+            supabaseClient.from('clients').select('*').eq('active', true).order('name'),
+            supabaseClient.from('operations').select('*, clients(name)').eq('active', true).order('department'),
+            supabaseClient.from('shifts').select('*').eq('active', true).order('name'),
+            supabaseClient.from('profiles').select('*').eq('role', 'onsite').eq('active', true),
+            supabaseClient.from('onsite_operations').select('*')
+        ]);
+        clientsData = clientsResult.data || [];
+        operationsData = operationsResult.data || [];
+        shiftsData = shiftsResult.data || [];
+        onsiteProfilesData = onsiteResult.data || [];
+        onsiteOperationsData = linksResult.data || [];
+        renderAdminSelects();
+        loadAdminAssignments();
+    }
+
+    function renderAdminSelects() {
+        document.getElementById('adminOperationClient').innerHTML = optionList(clientsData, 'Selecione o cliente', item => item.name);
+        const operationOptions = optionList(operationsData, 'Selecione a operação', item => `${item.clients?.name || ''} | ${item.cost_center} | ${item.department}`);
+        document.getElementById('adminLeaderOperation').innerHTML = operationOptions;
+        document.getElementById('adminOnsiteOperations').innerHTML = operationOptions.replace('<option value="">Selecione a operação</option>', '');
+        document.getElementById('adminLeaderShift').innerHTML = optionList(shiftsData, 'Selecione o turno', item => item.name);
+    }
+
+    function optionList(items, placeholder, labelFn) {
+        return `<option value="">${escapeHTML(placeholder)}</option>` + items.map(item =>
+            `<option value="${item.id}">${escapeHTML(labelFn(item))}</option>`
+        ).join('');
+    }
+
+    function toggleAdminUserFields() {
+        const role = document.getElementById('adminUserRole').value;
+        document.getElementById('leaderOperationBox').classList.toggle('hidden', role !== 'leader');
+        document.getElementById('leaderShiftBox').classList.toggle('hidden', role !== 'leader');
+        document.getElementById('onsiteOperationsBox').classList.toggle('hidden', role !== 'onsite');
+        document.getElementById('adminLeaderOperation').required = role === 'leader';
+        document.getElementById('adminLeaderShift').required = role === 'leader';
+        document.getElementById('adminOnsiteOperations').required = role === 'onsite';
+    }
+
+    async function createClient(event) {
+        event.preventDefault();
+        const name = document.getElementById('adminClientName').value.trim();
+        const { error } = await supabaseClient.from('clients').insert({ name });
+        if (error) return alert('Erro ao cadastrar cliente: ' + error.message);
+        event.target.reset();
+        await loadAdminData();
+    }
+
+    async function createShift(event) {
+        event.preventDefault();
+        const name = document.getElementById('adminShiftName').value.trim();
+        const { error } = await supabaseClient.from('shifts').insert({ name });
+        if (error) return alert('Erro ao cadastrar turno: ' + error.message);
+        event.target.reset();
+        await loadAdminData();
+    }
+
+    async function createOperation(event) {
+        event.preventDefault();
+        const operation = {
+            client_id: document.getElementById('adminOperationClient').value,
+            cost_center: document.getElementById('adminCostCenter').value.trim().toUpperCase(),
+            department: document.getElementById('adminDepartment').value.trim()
+        };
+        const { error } = await supabaseClient.from('operations').insert(operation);
+        if (error) return alert('Erro ao cadastrar operação: ' + error.message);
+        event.target.reset();
+        await loadAdminData();
+    }
+
+    async function createPortalUser(event) {
+        event.preventDefault();
+        const role = document.getElementById('adminUserRole').value;
+        const onsiteOperations = [...document.getElementById('adminOnsiteOperations').selectedOptions].map(option => option.value);
+        const payload = {
+            full_name: document.getElementById('adminUserName').value.trim(),
+            email: document.getElementById('adminUserEmail').value.trim().toLowerCase(),
+            phone: document.getElementById('adminUserPhone').value.trim(),
+            role,
+            operation_id: role === 'leader' ? document.getElementById('adminLeaderOperation').value : null,
+            shift_id: role === 'leader' ? document.getElementById('adminLeaderShift').value : null,
+            operation_ids: role === 'onsite' ? onsiteOperations : []
+        };
+        if (role === 'onsite' && onsiteOperations.length === 0) return alert('Selecione ao menos uma operação para o Onsite.');
+        const button = document.getElementById('adminCreateUserButton');
+        button.disabled = true;
+        button.textContent = 'Criando usuário...';
+        const { error } = await supabaseClient.functions.invoke('admin-create-user', { body: payload });
+        button.disabled = false;
+        button.textContent = 'Criar usuário e enviar convite';
+        if (error) return alert('Erro ao criar usuário: ' + error.message);
+        alert('Usuário criado e convite enviado!');
+        event.target.reset();
+        toggleAdminUserFields();
+        await loadAdminData();
+    }
+
+    async function loadAdminAssignments() {
+        const { data: requests } = await supabaseClient
+            .from('disciplinary_requests')
+            .select('*, operations(cost_center, department)')
+            .is('assigned_onsite_id', null)
+            .order('created_at');
+        const tbody = document.getElementById('adminAssignmentTableBody');
+        if (!requests?.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-400">Nenhuma solicitação aguardando atribuição.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = requests.map(request => {
+            const allowedIds = onsiteOperationsData.filter(link => link.operation_id === request.operation_id).map(link => link.onsite_id);
+            const candidates = onsiteProfilesData.filter(profile => allowedIds.includes(profile.id));
+            const options = candidates.map(profile => `<option value="${profile.id}">${escapeHTML(profile.full_name)}</option>`).join('');
+            return `<tr class="border-b">
+                <td class="p-3">${escapeHTML(request.employee_name)}</td>
+                <td class="p-3 text-sm">${escapeHTML(request.operations?.cost_center)}<br>${escapeHTML(request.operations?.department)}</td>
+                <td class="p-3">${escapeHTML(request.penalty_type)}</td>
+                <td class="p-3"><select id="assign-${request.id}" class="p-2 border rounded"><option value="">Selecione...</option>${options}</select></td>
+                <td class="p-3"><button onclick="assignRequest('${request.id}')" class="bg-blue-700 text-white px-3 py-2 rounded text-sm">Atribuir</button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    async function assignRequest(requestId) {
+        const onsiteId = document.getElementById(`assign-${requestId}`).value;
+        if (!onsiteId) return alert('Selecione um Onsite responsável.');
+        const { error } = await supabaseClient.from('disciplinary_requests').update({
+            assigned_onsite_id: onsiteId,
+            status: 'atribuido'
+        }).eq('id', requestId);
+        if (error) return alert('Erro ao atribuir solicitação: ' + error.message);
+        alert('Solicitação atribuída com sucesso!');
+        loadAdminAssignments();
     }
 
     // GERAÇÃO E DOWNLOAD LOCAL DO PDF (nenhum PDF é armazenado no Supabase)
@@ -582,6 +816,7 @@
 
     window.onload = () => {
         toggleSuspensionDays();
+        toggleAdminUserFields();
         checkUser();
     };
 </script>
