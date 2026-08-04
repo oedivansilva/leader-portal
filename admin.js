@@ -8,9 +8,9 @@ async function loadAll(){
   const failures=results.map((result,index)=>result.error?`${names[index]}: ${result.error.message}`:null).filter(Boolean)
   if(failures.length) alert('Alguns dados não puderam ser carregados:\n\n'+failures.join('\n'))
   ;[clients,operations,shifts,profiles,links,leaderLinks,requests]=results.slice(0,7).map(r=>r.data||[])
-  renderSelects();renderUsers();renderOperations();renderRequests();renderAudit(results[7].data||[]);renderStats()
+  renderSelects();renderUsers();renderOperations();renderRequests();renderAudit(results[7].data||[]);renderStats();if(typeof loadManagement==='function')loadManagement();if(typeof prepareDashboard==='function')prepareDashboard()
 }
-function renderStats(){statUsers.textContent=profiles.filter(x=>x.active).length;statPending.textContent=requests.filter(x=>!x.assigned_onsite_id).length;statOperations.textContent=operations.filter(x=>x.active).length}
+function renderStats(){statUsers.textContent=profiles.filter(x=>x.active).length;statPending.textContent=requests.filter(x=>!x.applied_date&&!['cancelado','concluido'].includes(x.status)).length;statOperations.textContent=operations.filter(x=>x.active).length}
 function operationLabel(x){return `${x.clients?.name||''} | ${x.cost_center} | ${x.department}`}
 function onsiteOperationOptions(onsiteId=null){const allowed=operations.filter(operation=>operation.active&&!links.some(link=>link.operation_id===operation.id&&link.onsite_id!==onsiteId));return allowed.map(operation=>`<option value="${operation.id}">${escapeHTML(operationLabel(operation))}</option>`).join('')}
 function renderSelects(){operationClient.innerHTML=options(clients.filter(x=>x.active),'Selecione o cliente',x=>x.name);leaderOperation.innerHTML=operations.filter(x=>x.active).map(x=>`<option value="${x.id}">${escapeHTML(operationLabel(x))}</option>`).join('');onsiteOperations.innerHTML=onsiteOperationOptions();leaderShift.innerHTML=options(shifts.filter(x=>x.active),'Selecione o turno',x=>x.name)}
