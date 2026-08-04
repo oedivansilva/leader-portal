@@ -34,7 +34,8 @@
 <button class="nav-btn" onclick="showPage('requests',this)">Solicitações</button>
 <button class="nav-btn" onclick="showPage('users',this)">Usuários</button>
 <button class="nav-btn" onclick="showPage('structure',this)">Estrutura</button>
-<button class="nav-btn" onclick="showPage('management',this)">Gestão</button>
+<button class="nav-btn" onclick="showPage('employees',this)">Colaboradores</button>
+<button class="nav-btn" onclick="showPage('management',this)">Escalas e benefícios</button>
 <button class="nav-btn" onclick="showPage('presenceAdmin',this)">Controle de Presença</button>
 <button class="nav-btn" onclick="showPage('turnoverAdmin',this)">Turnover</button>
 <button class="nav-btn" onclick="showPage('audit',this)">Auditoria</button>
@@ -276,9 +277,10 @@
 </form>
 </div>
 <div class="card">
-<h3>Novo turno</h3>
+<h3>Turno da liderança</h3>
 <form id="shiftForm" class="stack">
 <input id="shiftName" class="input" placeholder="Ex.: 1º Turno" required>
+<small class="muted">Usado somente no cadastro dos usuários líderes.</small>
 <button class="btn btn-primary">Cadastrar</button>
 </form>
 </div>
@@ -316,19 +318,20 @@
 <section id="management" class="page">
 <div class="page-head">
 <div>
-<h1>Gestão de colaboradores</h1>
-<p class="muted">Cadastros, contratos, escalas, benefícios e histórico disciplinar.</p>
+<h1>Escalas e benefícios</h1>
+<p class="muted">Configure os turnos, dias trabalhados e benefícios disponíveis.</p>
 </div>
-<button class="btn btn-primary" onclick="openEmployeeForm()">+ Novo colaborador</button>
 </div>
 <div class="grid-2">
 <div class="card">
-<h3>Nova escala</h3>
+<h3>Novo turno / escala de trabalho</h3>
 <form id="scaleForm" class="stack">
-<input id="scaleName" class="input" placeholder="Ex.: Administrativo" required>
+<input id="scaleEditId" type="hidden">
+<input id="scaleName" class="input" placeholder="Ex.: 5x2 — segunda a sexta" required>
 <input id="scaleDescription" class="input" placeholder="Descrição">
 <div class="field"><label>Dias trabalhados</label><div class="weekday-grid"><label><input type="checkbox" name="scaleDay" value="1"> Seg</label><label><input type="checkbox" name="scaleDay" value="2"> Ter</label><label><input type="checkbox" name="scaleDay" value="3"> Qua</label><label><input type="checkbox" name="scaleDay" value="4"> Qui</label><label><input type="checkbox" name="scaleDay" value="5"> Sex</label><label><input type="checkbox" name="scaleDay" value="6"> Sáb</label><label><input type="checkbox" name="scaleDay" value="0"> Dom</label></div><small class="muted">Dias não selecionados serão considerados folgas.</small></div>
-<button class="btn btn-primary">Cadastrar escala</button>
+<button id="scaleSaveButton" class="btn btn-primary">Cadastrar turno / escala</button>
+<button id="scaleCancelButton" type="button" class="btn btn-light hidden" onclick="cancelScaleEdit()">Cancelar edição</button>
 </form>
 </div>
 <div class="card">
@@ -339,6 +342,13 @@
 </form>
 </div>
 </div>
+<div class="card table-wrap">
+<h3>Turnos / escalas cadastrados</h3>
+<table class="table"><thead><tr><th>Nome</th><th>Dias trabalhados</th><th>Descrição</th><th>Status</th><th>Ações</th></tr></thead><tbody id="scaleRows"></tbody></table>
+</div>
+</section>
+<section id="employees" class="page">
+<div class="page-head"><div><h1>Colaboradores</h1><p class="muted">Cadastro, contratos, situação, benefícios e histórico disciplinar.</p></div><button class="btn btn-primary" onclick="openEmployeeForm()">+ Novo colaborador</button></div>
 <div id="employeeFormCard" class="card hidden">
 <div class="page-head">
 <h2 id="employeeFormTitle">Cadastrar colaborador</h2>
@@ -390,13 +400,8 @@
 </select>
 </div>
 <div class="field">
-<label>Turno</label>
-<select id="employeeShift" class="input">
-</select>
-</div>
-<div class="field">
-<label>Escala</label>
-<select id="employeeScale" class="input">
+<label>Turno / escala de trabalho</label>
+<select id="employeeScale" class="input" required>
 </select>
 </div>
 <div class="field">

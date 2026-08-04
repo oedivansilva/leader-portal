@@ -20,6 +20,8 @@ Os arquivos abaixo não são usados pelo GitHub Pages, mas estão no pacote para
 - `workforce.js`: listas administrativas de presença e turnover;
 - `dashboard.js`: indicadores de ABS, solicitações disciplinares, tempo de aplicação e turnover.
 
-No cadastro da escala, marque somente os dias trabalhados. Dias não selecionados são folgas e não aceitam lançamento de falta.
+No menu administrativo, **Colaboradores** contém somente os cadastros e históricos das pessoas. **Escalas e benefícios** concentra as configurações usadas nesses cadastros.
+
+No cadastro do turno/escala, marque somente os dias trabalhados. Dias não selecionados são folgas e não aceitam lançamento de falta. Turnos/escalas podem ser editados, desativados ou excluídos; a exclusão é bloqueada quando há colaboradores vinculados para preservar o histórico.
 
 Depois do commit, aguarde a publicação, saia do portal e entre novamente. O Admin será direcionado para `admin.html`.
