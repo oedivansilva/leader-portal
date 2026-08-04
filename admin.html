@@ -349,6 +349,11 @@
 </section>
 <section id="employees" class="page">
 <div class="page-head"><div><h1>Colaboradores</h1><p class="muted">Cadastro, contratos, situação, benefícios e histórico disciplinar.</p></div><button class="btn btn-primary" onclick="openEmployeeForm()">+ Novo colaborador</button></div>
+<div class="card">
+<div class="page-head"><div><h2>Importação em lote</h2><p class="muted">Use a planilha-modelo para cadastrar ou atualizar colaboradores pela MAT.</p></div><button type="button" class="btn btn-light" onclick="downloadEmployeeTemplate()">Baixar planilha-modelo</button></div>
+<div class="toolbar"><input id="employeeImportFile" type="file" class="input" accept=".xlsx,.xls,.csv" style="max-width:480px"><button id="employeeImportReadButton" type="button" class="btn btn-primary" onclick="readEmployeeImport()">Conferir arquivo</button></div>
+<div id="employeeImportPreview" class="hidden" style="margin-top:18px"><div class="grid-3"><div class="stat"><span>Linhas encontradas</span><strong id="importTotal">0</strong></div><div class="stat"><span>Linhas válidas</span><strong id="importValid">0</strong></div><div class="stat"><span>Linhas com erro</span><strong id="importInvalid">0</strong></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Linha</th><th>MAT</th><th>Colaborador</th><th>Operação</th><th>Turno/escala</th><th>Resultado da conferência</th></tr></thead><tbody id="employeeImportRows"></tbody></table></div><button id="employeeImportButton" type="button" class="btn btn-success" onclick="importEmployees()">Importar linhas válidas</button></div>
+</div>
 <div id="employeeFormCard" class="card hidden">
 <div class="page-head">
 <h2 id="employeeFormTitle">Cadastrar colaborador</h2>
@@ -512,6 +517,10 @@
 <script src="dashboard.js">
 </script>
 <script src="workforce.js">
+</script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">
+</script>
+<script src="bulk-import.js">
 </script>
 </body>
 </html>

@@ -22,6 +22,8 @@ Os arquivos abaixo não são usados pelo GitHub Pages, mas estão no pacote para
 
 No menu administrativo, **Colaboradores** contém somente os cadastros e históricos das pessoas. **Escalas e benefícios** concentra as configurações usadas nesses cadastros.
 
+Em **Colaboradores > Importação em lote**, baixe `MODELO_IMPORTACAO_COLABORADORES.xlsx`, preencha a aba COLABORADORES e use **Conferir arquivo** antes de importar. O portal aceita `.xlsx`, `.xls` e `.csv`, valida cada linha e atualiza registros que já tenham a mesma MAT.
+
 No cadastro do turno/escala, marque somente os dias trabalhados. Dias não selecionados são folgas e não aceitam lançamento de falta. Turnos/escalas podem ser editados, desativados ou excluídos; a exclusão é bloqueada quando há colaboradores vinculados para preservar o histórico.
 
 Depois do commit, aguarde a publicação, saia do portal e entre novamente. O Admin será direcionado para `admin.html`.
