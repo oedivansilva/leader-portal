@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
 
@@ -21,31 +20,15 @@
         
         <!-- Tela de Acesso (Login / Cadastro) -->
         <div id="loginScreen" class="max-w-md mx-auto bg-white p-8 rounded shadow-md mt-10">
-            <div class="flex border-b mb-6">
-                <button id="tabLoginBtn" onclick="switchTab('login')" class="w-1/2 py-2 font-bold border-b-2 border-blue-600 text-blue-600">Entrar</button>
-                <button id="tabRegisterBtn" onclick="switchTab('register')" class="w-1/2 py-2 font-bold text-gray-500">Criar Conta</button>
-            </div>
+            <h2 class="text-2xl font-bold text-center mb-2">Acesso ao Portal</h2>
+            <p class="text-sm text-gray-500 text-center mb-6">Use a conta fornecida pelo administrador.</p>
 
             <!-- Form Login -->
             <form id="formLogin" onsubmit="event.preventDefault(); login();">
                 <input type="email" id="email" placeholder="E-mail" required class="w-full p-2 mb-4 border rounded">
                 <input type="password" id="password" placeholder="Senha" required class="w-full p-2 mb-6 border rounded">
                 <button type="submit" class="w-full bg-blue-700 text-white font-bold py-2 rounded hover:bg-blue-800">Entrar</button>
-            </form>
-
-            <!-- Form Cadastro -->
-            <form id="formRegister" class="hidden" onsubmit="event.preventDefault(); register();">
-                <input type="text" id="regName" placeholder="Nome Completo" required class="w-full p-2 mb-4 border rounded">
-                <input type="email" id="regEmail" placeholder="E-mail" required class="w-full p-2 mb-4 border rounded">
-                <input type="password" id="regPassword" placeholder="Senha (mín. 6 caracteres)" required class="w-full p-2 mb-4 border rounded">
-                
-                <label class="block text-sm font-medium mb-1">Perfil de Acesso</label>
-                <select id="regRole" class="w-full p-2 mb-6 border rounded">
-                    <option value="leader">Líder / Gestor</option>
-                    <option value="onsite">Equipe Onsite</option>
-                </select>
-                
-                <button type="submit" class="w-full bg-green-600 text-white font-bold py-2 rounded hover:bg-green-700">Cadastrar</button>
+                <button type="button" onclick="forgotPassword()" class="w-full mt-4 text-sm text-blue-700 hover:underline">Esqueci minha senha</button>
             </form>
         </div>
 
@@ -67,7 +50,7 @@
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium mb-1">Tipo de Medida</label>
-                        <select id="penaltyType" required class="w-full p-2 border rounded">
+                        <select id="penaltyType" onchange="toggleSuspensionDays()" required class="w-full p-2 border rounded">
                             <option value="Advertência">Advertência Escrita</option>
                             <option value="Suspensão">Suspensão</option>
                         </select>
@@ -80,6 +63,14 @@
                 </div>
                 
                 <p id="reasonDesc" class="text-sm text-gray-500 bg-gray-100 p-2 rounded mb-4 hidden"></p>
+
+                <div id="suspensionDaysBox" class="mb-4 hidden">
+                    <label class="block text-sm font-medium mb-1">Quantidade de dias de suspensão</label>
+                    <select id="suspensionDays" class="w-full p-2 border rounded">
+                        <option value="1">1 dia</option>
+                        <option value="3">3 dias</option>
+                    </select>
+                </div>
 
                 <div class="grid grid-cols-2 gap-4 mb-6">
                     <div>
@@ -218,40 +209,29 @@
         });
     }
 
-    function switchTab(tab) {
-        const formLogin = document.getElementById('formLogin');
-        const formRegister = document.getElementById('formRegister');
-        const tabLoginBtn = document.getElementById('tabLoginBtn');
-        const tabRegisterBtn = document.getElementById('tabRegisterBtn');
-
-        if (tab === 'login') {
-            formLogin.classList.remove('hidden');
-            formRegister.classList.add('hidden');
-            tabLoginBtn.className = "w-1/2 py-2 font-bold border-b-2 border-blue-600 text-blue-600";
-            tabRegisterBtn.className = "w-1/2 py-2 font-bold text-gray-500";
-        } else {
-            formLogin.classList.add('hidden');
-            formRegister.classList.remove('hidden');
-            tabRegisterBtn.className = "w-1/2 py-2 font-bold border-b-2 border-green-600 text-green-600";
-            tabLoginBtn.className = "w-1/2 py-2 font-bold text-gray-500";
+    async function forgotPassword() {
+        const email = document.getElementById('email').value.trim();
+        if (!email) {
+            alert('Informe seu e-mail no campo de acesso.');
+            return;
         }
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin + window.location.pathname
+        });
+        if (error) alert('Não foi possível enviar a recuperação: ' + error.message);
+        else alert('Se o e-mail estiver cadastrado, você receberá as instruções de recuperação.');
     }
 
-    async function register() {
-        const email = document.getElementById('regEmail').value;
-        const password = document.getElementById('regPassword').value;
-        const fullName = document.getElementById('regName').value;
-        const role = document.getElementById('regRole').value;
+    function toggleSuspensionDays() {
+        const isSuspension = document.getElementById('penaltyType').value === 'Suspensão';
+        document.getElementById('suspensionDaysBox').classList.toggle('hidden', !isSuspension);
+        document.getElementById('suspensionDays').required = isSuspension;
+    }
 
-        const { data, error } = await supabaseClient.auth.signUp({
-            email, password, options: { data: { full_name: fullName, role: role } }
-        });
-
-        if (error) alert('Erro ao realizar cadastro: ' + error.message);
-        else {
-            alert('Cadastro realizado com sucesso!');
-            switchTab('login');
-        }
+    function escapeHTML(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, char => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        })[char]);
     }
 
     async function login() {
@@ -270,6 +250,11 @@
             if (!profile) return;
 
             currentProfile = profile;
+            if (!profile.active) {
+                await supabaseClient.auth.signOut();
+                alert('Seu acesso está desativado. Procure o administrador do portal.');
+                return;
+            }
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('btnLogout').classList.remove('hidden');
 
@@ -389,7 +374,10 @@
             penalty_type: document.getElementById('penaltyType').value,
             reason_id: document.getElementById('reasonId').value,
             incident_date: formattedDates,
-            issue_date: document.getElementById('issueDate').value
+            issue_date: document.getElementById('issueDate').value,
+            suspension_days: document.getElementById('penaltyType').value === 'Suspensão'
+                ? Number(document.getElementById('suspensionDays').value)
+                : null
         };
 
         const { error } = await supabaseClient.from('disciplinary_requests').insert([request]);
@@ -424,14 +412,14 @@
                     ? '<span class="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded">Assinado</span>'
                     : '<span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded">Pendente Onsite</span>';
 
-                const actionBtn = isReady && req.document_url
-                    ? `<button onclick="openPDF('${req.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 font-bold">Baixar PDF</button>`
-                    : '<span class="text-xs text-gray-400">Aguardando Assinatura</span>';
+                const actionBtn = isReady
+                    ? '<span class="text-xs text-green-700">Tratado pelo Onsite</span>'
+                    : '<span class="text-xs text-gray-400">Aguardando Onsite</span>';
 
                 tbody.innerHTML += `
                     <tr class="border-b hover:bg-gray-50">
-                        <td class="p-3 font-medium text-sm">${req.employee_name}</td>
-                        <td class="p-3 text-sm">${req.penalty_type}</td>
+                        <td class="p-3 font-medium text-sm">${escapeHTML(req.employee_name)}</td>
+                        <td class="p-3 text-sm">${escapeHTML(req.penalty_type)}</td>
                         <td class="p-3">${statusBadge}</td>
                         <td class="p-3 text-center">${actionBtn}</td>
                     </tr>
@@ -459,16 +447,16 @@
                 
                 let actionBtn = '';
                 if (req.status === 'gerado' || req.status === 'concluido') {
-                    actionBtn = `<button onclick="openPDF('${req.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 font-bold">Ver PDF Assinado</button>`;
+                    actionBtn = '<span class="text-xs text-green-700 font-semibold">Documento baixado</span>';
                 } else {
                     actionBtn = `<button onclick="generateDoc('${req.id}')" class="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 font-bold">ASSINAR E GERAR PDF</button>`;
                 }
 
                 tbody.innerHTML += `
                     <tr class="border-b hover:bg-gray-50">
-                        <td class="p-3 font-medium text-sm">${req.employee_name}</td>
-                        <td class="p-3 text-sm">${req.penalty_type}</td>
-                        <td class="p-3 text-sm">${reasonTitle}</td>
+                        <td class="p-3 font-medium text-sm">${escapeHTML(req.employee_name)}</td>
+                        <td class="p-3 text-sm">${escapeHTML(req.penalty_type)}</td>
+                        <td class="p-3 text-sm">${escapeHTML(reasonTitle)}</td>
                         <td class="p-3 text-sm">${formattedIssueDate}</td>
                         <td class="p-3 text-center">${actionBtn}</td>
                     </tr>
@@ -479,23 +467,7 @@
         }
     }
 
-    // ABERTURA DIRETA DA URL DO SUPABASE STORAGE
-    async function openPDF(requestId) {
-        const { data: req } = await supabaseClient
-            .from('disciplinary_requests')
-            .select('document_url')
-            .eq('id', requestId)
-            .single();
-
-        if (!req || !req.document_url) { 
-            alert('Erro ao carregar a URL do PDF.'); 
-            return; 
-        }
-
-        window.open(req.document_url, '_blank');
-    }
-
-    // GERAÇÃO E UPLOAD DO PDF PARA O SUPABASE STORAGE
+    // GERAÇÃO E DOWNLOAD LOCAL DO PDF (nenhum PDF é armazenado no Supabase)
     async function generateDoc(requestId) {
         if (!currentProfile.signature_url) {
             alert('Você precisa cadastrar sua assinatura digital no topo da página antes de assinar o documento.');
@@ -552,8 +524,11 @@
                        `Aproveitamos para esclarecer que a repetição ou prática de condutas semelhantes poderá resultar em penalidades ` +
                        `mais severas, inclusive a demissão por justa causa, conforme previsto no Artigo 482 e suas alíneas da CLT.`;
         } else {
+            const suspensionDays = Number(req.suspension_days || 1);
+            const durationText = suspensionDays === 1 ? '1 (um) dia' : '3 (três) dias';
             bodyText = `Pela presente fica V.Sa. suspenso das atividades laborais em razão das irregularidades em virtude de ` +
                        `${reasonDesc} ocorridas nas datas: ${req.incident_date}.\n\n` +
+                       `Em razão da conduta, fica aplicada a suspensão disciplinar pelo período de ${durationText}.\n\n` +
                        `Lembramos que a reincidência deste comportamento poderá resultar em justa causa conforme artigo 482 da CLT.`;
         }
 
@@ -586,46 +561,29 @@
         doc.line(115, ySign + 45, 190, ySign + 45);
         doc.text("Testemunha 2", 115, ySign + 50);
 
-        // 1. Converte o documento gerado em um Blob binário
-        const pdfBlob = doc.output('blob');
-        const fileName = `doc_${requestId}_${Date.now()}.pdf`;
+        const safeEmployeeName = req.employee_name.replace(/[^a-zA-ZÀ-ÿ0-9_-]+/g, '_');
+        doc.save(`${req.penalty_type}_${safeEmployeeName}_${req.issue_date}.pdf`);
 
-        // 2. Faz o upload do arquivo para o bucket 'disciplinary-docs'
-        const { error: uploadError } = await supabaseClient.storage
-            .from('disciplinary-docs')
-            .upload(fileName, pdfBlob, {
-                contentType: 'application/pdf',
-                upsert: true
-            });
-
-        if (uploadError) {
-            alert('Erro ao enviar o PDF para o armazenamento: ' + uploadError.message);
-            return;
-        }
-
-        // 3. Obtém a URL pública do arquivo recém-enviado
-        const { data: { publicUrl } } = supabaseClient.storage
-            .from('disciplinary-docs')
-            .getPublicUrl(fileName);
-
-        // 4. Salva o link da URL pública no banco de dados
+        // O banco guarda somente o andamento; o arquivo fica com o Onsite que o baixou.
         const { error: updateError } = await supabaseClient
             .from('disciplinary_requests')
             .update({ 
-                status: 'gerado', 
-                document_url: publicUrl 
+                status: 'gerado'
             })
             .eq('id', requestId);
 
         if (updateError) {
             alert('Erro ao atualizar registro da solicitação: ' + updateError.message);
         } else {
-            alert('Documento assinado, salvo no Storage e disponibilizado para o gestor!');
+            alert('Documento gerado e baixado. Nenhum PDF foi armazenado no Supabase.');
             loadRequests();
         }
     }
 
-    window.onload = checkUser;
+    window.onload = () => {
+        toggleSuspensionDays();
+        checkUser();
+    };
 </script>
 </body>
 </html>
