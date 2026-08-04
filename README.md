@@ -1,23 +1,15 @@
-# Portal do Líder — versão modular
+# Portal do Líder — pacote sem pastas
 
-## Publicação no GitHub Pages
+Esta versão foi preparada para upload direto pelo site do GitHub. Todos os arquivos podem ficar na raiz do repositório.
 
-Envie para a raiz do repositório tudo o que está nesta pasta, preservando as pastas `css`, `js` e `supabase`. O arquivo inicial precisa continuar se chamando `index.html`.
+## GitHub Pages
 
-Depois do commit, aguarde a publicação e atualize a página com `Ctrl + F5`.
+Envie para a raiz os arquivos `.html`, `.js` e `styles.css`. Confirme diretamente na branch `main`.
 
-## Supabase
+Os arquivos abaixo não são usados pelo GitHub Pages, mas estão no pacote para configuração do Supabase:
 
-1. Execute `supabase/ATUALIZAR_BANCO.sql` no SQL Editor.
-2. Atualize a Edge Function `admin-create-user` com `supabase/functions/admin-create-user/index.ts`.
-3. Crie uma Edge Function chamada `admin-manage-user` com `supabase/functions/admin-manage-user/index.ts`.
-4. Faça o deploy das duas funções.
+- `ATUALIZAR_BANCO.sql`: execute o conteúdo no SQL Editor;
+- `admin-create-user.ts`: código da Edge Function `admin-create-user`;
+- `admin-manage-user.ts`: código da Edge Function `admin-manage-user`.
 
-## Páginas
-
-- `index.html`: login e troca da senha temporária;
-- `admin.html`: painel administrativo com menu, usuários, estrutura, solicitações e auditoria;
-- `leader.html`: abertura e acompanhamento das solicitações;
-- `onsite.html`: tratamento e geração local dos PDFs.
-
-Os PDFs continuam sendo baixados no navegador e não são armazenados no Supabase.
+Depois do commit, aguarde a publicação, saia do portal e entre novamente. O Admin será direcionado para `admin.html`.
