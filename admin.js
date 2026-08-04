@@ -8,7 +8,7 @@ async function loadAll(){
   const failures=results.map((result,index)=>result.error?`${names[index]}: ${result.error.message}`:null).filter(Boolean)
   if(failures.length) alert('Alguns dados não puderam ser carregados:\n\n'+failures.join('\n'))
   ;[clients,operations,shifts,profiles,links,leaderLinks,requests]=results.slice(0,7).map(r=>r.data||[])
-  renderSelects();renderUsers();renderOperations();renderRequests();renderAudit(results[7].data||[]);renderStats();if(typeof loadManagement==='function')loadManagement();if(typeof prepareDashboard==='function')prepareDashboard()
+  renderSelects();renderUsers();renderOperations();renderRequests();renderAudit(results[7].data||[]);renderStats();if(typeof loadManagement==='function')loadManagement();if(typeof prepareDashboard==='function')prepareDashboard();if(typeof loadWorkforce==='function')loadWorkforce()
 }
 function renderStats(){statUsers.textContent=profiles.filter(x=>x.active).length;statPending.textContent=requests.filter(x=>!x.applied_date&&!['cancelado','concluido'].includes(x.status)).length;statOperations.textContent=operations.filter(x=>x.active).length}
 function operationLabel(x){return `${x.clients?.name||''} | ${x.cost_center} | ${x.department}`}

@@ -35,6 +35,8 @@
 <button class="nav-btn" onclick="showPage('users',this)">Usuários</button>
 <button class="nav-btn" onclick="showPage('structure',this)">Estrutura</button>
 <button class="nav-btn" onclick="showPage('management',this)">Gestão</button>
+<button class="nav-btn" onclick="showPage('presenceAdmin',this)">Controle de Presença</button>
+<button class="nav-btn" onclick="showPage('turnoverAdmin',this)">Turnover</button>
 <button class="nav-btn" onclick="showPage('audit',this)">Auditoria</button>
 </aside>
 <main class="main">
@@ -45,24 +47,59 @@
 <p class="muted">Indicadores disciplinares e operacionais.</p>
 </div>
 </div>
+<div class="toolbar" style="margin-top:18px">
+<input id="dashboardMonth" type="month" class="input" style="max-width:210px">
+<select id="dashboardOperation" class="input" style="max-width:320px">
+<option value="">Todas as operações</option>
+</select>
+<button class="btn btn-primary" onclick="loadDashboard()">Atualizar</button>
+</div>
+<div class="grid-3"><div class="stat"><span>ABS total</span><strong id="metricAbs">—</strong></div><div class="stat"><span>Faltas justificadas</span><strong id="metricJustified">0</strong></div><div class="stat"><span>Faltas injustificadas</span><strong id="metricUnjustified">0</strong></div></div>
+<div class="grid-2" style="margin-top:18px"><div class="card"><h3>Status das solicitações</h3><canvas id="statusChart"></canvas></div><div class="card"><h3>ABS por operação</h3><canvas id="absOperationChart"></canvas></div></div>
 <div class="grid-3">
 <div class="stat">
-<span>Usuários ativos</span>
-<strong id="statUsers">—</strong>
+<span>Advertências no período</span>
+<strong id="metricWarnings">0</strong>
 </div>
 <div class="stat">
-<span>Pendentes de aplicação</span>
-<strong id="statPending">—</strong>
+<span>Suspensões no período</span>
+<strong id="metricSuspensions">0</strong>
 </div>
 <div class="stat">
-<span>Operações cadastradas</span>
-<strong id="statOperations">—</strong>
+<span>Tempo médio desde a 1ª ocorrência</span>
+<strong id="metricApplicationTime">—</strong>
 </div>
 </div>
-<div class="toolbar" style="margin-top:18px"><input id="dashboardMonth" type="month" class="input" style="max-width:210px"><select id="dashboardOperation" class="input" style="max-width:320px"><option value="">Todas as operações</option></select><button class="btn btn-primary" onclick="loadDashboard()">Atualizar</button></div>
-<div class="grid-3"><div class="stat"><span>Advertências no período</span><strong id="metricWarnings">0</strong></div><div class="stat"><span>Suspensões no período</span><strong id="metricSuspensions">0</strong></div><div class="stat"><span>Tempo médio desde a 1ª ocorrência</span><strong id="metricApplicationTime">—</strong></div></div>
-<div class="grid-2" style="margin-top:18px"><div class="card"><h3>Medidas por região</h3><canvas id="regionChart"></canvas></div><div class="card"><h3>Medidas por líder</h3><canvas id="leaderChart"></canvas></div></div>
-<div class="card"><h3>Tempos de aplicação</h3><div class="grid-3"><div class="stat"><span>Desde a ocorrência mais antiga</span><strong id="metricOldest">—</strong></div><div class="stat"><span>Desde a ocorrência mais recente</span><strong id="metricNewest">—</strong></div><div class="stat"><span>Média por ocorrência</span><strong id="metricOccurrenceAverage">—</strong></div></div></div>
+<div class="grid-2" style="margin-top:18px">
+<div class="card">
+<h3>Medidas por região</h3>
+<canvas id="regionChart">
+</canvas>
+</div>
+<div class="card">
+<h3>Medidas por líder</h3>
+<canvas id="leaderChart">
+</canvas>
+</div>
+</div>
+<div class="card">
+<h3>Tempos de aplicação</h3>
+<div class="grid-3">
+<div class="stat">
+<span>Desde a ocorrência mais antiga</span>
+<strong id="metricOldest">—</strong>
+</div>
+<div class="stat">
+<span>Desde a ocorrência mais recente</span>
+<strong id="metricNewest">—</strong>
+</div>
+<div class="stat">
+<span>Média por ocorrência</span>
+<strong id="metricOccurrenceAverage">—</strong>
+</div>
+</div>
+</div>
+<div class="card"><h3>Turnover</h3><div class="grid-3"><div class="stat"><span>Admissões</span><strong id="metricAdmissions">0</strong></div><div class="stat"><span>Desligamentos</span><strong id="metricTerminations">0</strong></div><div class="stat"><span>Turnover geral</span><strong id="metricGeneralTurnover">—</strong></div><div class="stat"><span>Turnover de desligamentos</span><strong id="metricTurnover">—</strong></div><div class="stat"><span>Desligamentos voluntários</span><strong id="metricVoluntary">0</strong></div><div class="stat"><span>Desligamentos involuntários</span><strong id="metricInvoluntary">0</strong></div></div><div style="margin-top:18px"><canvas id="turnoverChart"></canvas></div></div>
 </section>
   <section id="requests" class="page">
 <div class="page-head">
@@ -95,6 +132,7 @@
 </div>
 <button class="btn btn-primary" onclick="document.getElementById('userFormCard').classList.toggle('hidden')">+ Novo usuário</button>
 </div>
+<div class="stat" style="max-width:280px;margin-bottom:18px"><span>Usuários ativos</span><strong id="statUsers">—</strong></div>
     <div id="userFormCard" class="card hidden">
 <h2>Cadastrar usuário</h2>
 <form id="userForm" class="grid-2">
@@ -228,6 +266,7 @@
 <p class="muted">Clientes, turnos e centros de custo.</p>
 </div>
 </div>
+<div class="stat" style="max-width:280px;margin-bottom:18px"><span>Operações cadastradas</span><strong id="statOperations">—</strong></div><span id="statPending" class="hidden">0</span>
 <div class="grid-3">
 <div class="card">
 <h3>Novo cliente</h3>
@@ -275,11 +314,163 @@
 </div>
 </section>
 <section id="management" class="page">
-<div class="page-head"><div><h1>Gestão de colaboradores</h1><p class="muted">Cadastros, contratos, escalas, benefícios e histórico disciplinar.</p></div><button class="btn btn-primary" onclick="openEmployeeForm()">+ Novo colaborador</button></div>
-<div class="grid-2"><div class="card"><h3>Nova escala</h3><form id="scaleForm" class="stack"><input id="scaleName" class="input" placeholder="Ex.: 6x1" required><input id="scaleDescription" class="input" placeholder="Descrição/horários"><button class="btn btn-primary">Cadastrar escala</button></form></div><div class="card"><h3>Novo benefício</h3><form id="benefitForm" class="stack"><input id="benefitName" class="input" placeholder="Ex.: Vale-transporte" required><button class="btn btn-primary">Cadastrar benefício</button></form></div></div>
-<div id="employeeFormCard" class="card hidden"><div class="page-head"><h2 id="employeeFormTitle">Cadastrar colaborador</h2><button type="button" class="btn btn-light" onclick="closeEmployeeForm()">Cancelar</button></div><form id="employeeForm" class="grid-2"><input id="employeeId" type="hidden"><div class="field"><label>MAT</label><input id="employeeRegistration" class="input" required></div><div class="field"><label>Nome completo</label><input id="managementEmployeeName" class="input" required></div><div class="field"><label>CPF</label><input id="managementEmployeeCpf" class="input" maxlength="14" required></div><div class="field"><label>Sexo</label><select id="employeeSex" class="input" required><option>Feminino</option><option>Masculino</option><option>Outro</option><option>Não informado</option></select></div><div class="field"><label>Data de nascimento</label><input id="employeeBirthDate" type="date" class="input" required></div><div class="field"><label>Data de admissão</label><input id="employeeAdmissionDate" type="date" class="input" required></div><div class="field"><label>Data de demissão</label><input id="employeeDismissalDate" type="date" class="input"></div><div class="field"><label>Operação (cliente/CC/departamento)</label><select id="employeeOperation" class="input" required></select></div><div class="field"><label>Líder</label><select id="employeeLeader" class="input"></select></div><div class="field"><label>Turno</label><select id="employeeShift" class="input"></select></div><div class="field"><label>Escala</label><select id="employeeScale" class="input"></select></div><div class="field"><label>Vencimento do contrato</label><input id="employeeContractEnd" type="date" class="input"></div><div class="field"><label>Prorrogação do contrato</label><input id="employeeContractExtension" type="date" class="input"></div><div class="field"><label>Celular</label><input id="employeePhone" class="input"></div><div class="field"><label>E-mail</label><input id="employeeEmail" type="email" class="input"></div><div class="field"><label>Status</label><select id="employeeStatus" class="input"><option value="ativo">Ativo</option><option value="afastado">Afastado</option><option value="desligado">Desligado</option></select></div><div class="field"><label>Tamanho do colete</label><input id="employeeVest" class="input"></div><div class="field"><label>Tamanho da luva</label><input id="employeeGlove" class="input"></div><div class="field"><label>Tamanho da bota</label><input id="employeeBoot" class="input"></div><div class="field"><label>Benefícios</label><select id="employeeBenefits" class="input" multiple size="6"></select></div><button class="btn btn-success" style="grid-column:1/-1">Salvar colaborador</button></form></div>
-<div class="card"><div class="toolbar"><input id="employeeSearch" class="input" placeholder="Buscar por MAT ou nome" style="max-width:360px"></div><div class="table-wrap"><table class="table"><thead><tr><th>MAT</th><th>Nome</th><th>Operação</th><th>Status</th><th>Advertências</th><th>Suspensões</th><th>Ações</th></tr></thead><tbody id="employeeRows"></tbody></table></div></div>
+<div class="page-head">
+<div>
+<h1>Gestão de colaboradores</h1>
+<p class="muted">Cadastros, contratos, escalas, benefícios e histórico disciplinar.</p>
+</div>
+<button class="btn btn-primary" onclick="openEmployeeForm()">+ Novo colaborador</button>
+</div>
+<div class="grid-2">
+<div class="card">
+<h3>Nova escala</h3>
+<form id="scaleForm" class="stack">
+<input id="scaleName" class="input" placeholder="Ex.: Administrativo" required>
+<input id="scaleDescription" class="input" placeholder="Descrição">
+<div class="field"><label>Dias trabalhados</label><div class="weekday-grid"><label><input type="checkbox" name="scaleDay" value="1"> Seg</label><label><input type="checkbox" name="scaleDay" value="2"> Ter</label><label><input type="checkbox" name="scaleDay" value="3"> Qua</label><label><input type="checkbox" name="scaleDay" value="4"> Qui</label><label><input type="checkbox" name="scaleDay" value="5"> Sex</label><label><input type="checkbox" name="scaleDay" value="6"> Sáb</label><label><input type="checkbox" name="scaleDay" value="0"> Dom</label></div><small class="muted">Dias não selecionados serão considerados folgas.</small></div>
+<button class="btn btn-primary">Cadastrar escala</button>
+</form>
+</div>
+<div class="card">
+<h3>Novo benefício</h3>
+<form id="benefitForm" class="stack">
+<input id="benefitName" class="input" placeholder="Ex.: Vale-transporte" required>
+<button class="btn btn-primary">Cadastrar benefício</button>
+</form>
+</div>
+</div>
+<div id="employeeFormCard" class="card hidden">
+<div class="page-head">
+<h2 id="employeeFormTitle">Cadastrar colaborador</h2>
+<button type="button" class="btn btn-light" onclick="closeEmployeeForm()">Cancelar</button>
+</div>
+<form id="employeeForm" class="grid-2">
+<input id="employeeId" type="hidden">
+<div class="field">
+<label>MAT</label>
+<input id="employeeRegistration" class="input" required>
+</div>
+<div class="field">
+<label>Nome completo</label>
+<input id="managementEmployeeName" class="input" required>
+</div>
+<div class="field">
+<label>CPF</label>
+<input id="managementEmployeeCpf" class="input" maxlength="14" required>
+</div>
+<div class="field">
+<label>Sexo</label>
+<select id="employeeSex" class="input" required>
+<option>Feminino</option>
+<option>Masculino</option>
+<option>Outro</option>
+<option>Não informado</option>
+</select>
+</div>
+<div class="field">
+<label>Data de nascimento</label>
+<input id="employeeBirthDate" type="date" class="input" required>
+</div>
+<div class="field">
+<label>Data de admissão</label>
+<input id="employeeAdmissionDate" type="date" class="input" required>
+</div>
+<div class="field">
+<label>Data de demissão</label>
+<input id="employeeDismissalDate" type="date" class="input">
+</div>
+<div class="field">
+<label>Operação (cliente/CC/departamento)</label>
+<select id="employeeOperation" class="input" required>
+</select>
+</div>
+<div class="field">
+<label>Líder</label>
+<select id="employeeLeader" class="input">
+</select>
+</div>
+<div class="field">
+<label>Turno</label>
+<select id="employeeShift" class="input">
+</select>
+</div>
+<div class="field">
+<label>Escala</label>
+<select id="employeeScale" class="input">
+</select>
+</div>
+<div class="field">
+<label>Vencimento do contrato</label>
+<input id="employeeContractEnd" type="date" class="input">
+</div>
+<div class="field">
+<label>Prorrogação do contrato</label>
+<input id="employeeContractExtension" type="date" class="input">
+</div>
+<div class="field">
+<label>Celular</label>
+<input id="employeePhone" class="input">
+</div>
+<div class="field">
+<label>E-mail</label>
+<input id="employeeEmail" type="email" class="input">
+</div>
+<div class="field">
+<label>Status</label>
+<select id="employeeStatus" class="input">
+<option value="ativo">Ativo</option>
+<option value="afastado">Afastado</option>
+<option value="desligado">Desligado</option>
+</select>
+</div>
+<div class="field">
+<label>Tamanho do colete</label>
+<input id="employeeVest" class="input">
+</div>
+<div class="field">
+<label>Tamanho da luva</label>
+<input id="employeeGlove" class="input">
+</div>
+<div class="field">
+<label>Tamanho da bota</label>
+<input id="employeeBoot" class="input">
+</div>
+<div class="field"><label>Tipo de desligamento</label><select id="employeeTerminationType" class="input"><option value="">Não se aplica</option><option value="voluntario">Voluntário</option><option value="involuntario">Involuntário</option><option value="termino_contrato">Término de contrato</option></select></div>
+<div class="field"><label>Motivo do desligamento</label><input id="employeeTerminationReason" class="input"></div>
+<div class="field"><label>Elegível para recontratação</label><select id="employeeRehire" class="input"><option value="">Não informado</option><option value="true">Sim</option><option value="false">Não</option></select></div>
+<div class="field">
+<label>Benefícios</label>
+<select id="employeeBenefits" class="input" multiple size="6">
+</select>
+</div>
+<button class="btn btn-success" style="grid-column:1/-1">Salvar colaborador</button>
+</form>
+</div>
+<div class="card">
+<div class="toolbar">
+<input id="employeeSearch" class="input" placeholder="Buscar por MAT ou nome" style="max-width:360px">
+</div>
+<div class="table-wrap">
+<table class="table">
+<thead>
+<tr>
+<th>MAT</th>
+<th>Nome</th>
+<th>Operação</th>
+<th>Status</th>
+<th>Advertências</th>
+<th>Suspensões</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody id="employeeRows">
+</tbody>
+</table>
+</div>
+</div>
 </section>
+<section id="presenceAdmin" class="page"><div class="page-head"><div><h1>Controle de Presença</h1><p class="muted">Faltas registradas pelas lideranças.</p></div></div><div class="card table-wrap"><table class="table"><thead><tr><th>Data</th><th>MAT</th><th>Colaborador</th><th>Operação</th><th>Líder</th><th>Tipo</th><th>Observação</th></tr></thead><tbody id="adminAbsenceRows"></tbody></table></div></section>
+<section id="turnoverAdmin" class="page"><div class="page-head"><div><h1>Turnover</h1><p class="muted">Admissões, desligamentos e motivos.</p></div></div><div class="card table-wrap"><table class="table"><thead><tr><th>MAT</th><th>Colaborador</th><th>Admissão</th><th>Demissão</th><th>Tipo</th><th>Motivo</th><th>Recontratação</th></tr></thead><tbody id="turnoverRows"></tbody></table></div></section>
   <section id="audit" class="page">
 <div class="page-head">
 <div>
@@ -314,6 +505,8 @@
 <script src="management.js">
 </script>
 <script src="dashboard.js">
+</script>
+<script src="workforce.js">
 </script>
 </body>
 </html>
