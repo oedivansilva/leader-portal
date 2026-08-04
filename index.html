@@ -20,6 +20,7 @@
             </div>
             <button id="btnLogout" class="bg-red-600 px-4 py-2 rounded text-sm hover:bg-red-700">Sair</button>
         </div>
+
     </nav>
 
     <div class="container mx-auto p-6">
@@ -35,6 +36,16 @@
                 <input type="password" id="password" placeholder="Senha" required class="w-full p-2 mb-6 border rounded">
                 <button type="submit" class="w-full bg-blue-700 text-white font-bold py-2 rounded hover:bg-blue-800">Entrar</button>
                 <button type="button" onclick="forgotPassword()" class="w-full mt-4 text-sm text-blue-700 hover:underline">Esqueci minha senha</button>
+            </form>
+        </div>
+
+        <div id="initialPasswordScreen" class="hidden max-w-md mx-auto bg-white p-8 rounded shadow-md mt-10">
+            <h2 class="text-2xl font-bold mb-2">Crie sua senha pessoal</h2>
+            <p class="text-sm text-gray-500 mb-6">Este é seu primeiro acesso. Substitua a senha temporária antes de continuar.</p>
+            <form onsubmit="changeInitialPassword(event)">
+                <input type="password" id="newInitialPassword" minlength="8" required placeholder="Nova senha (mínimo 8 caracteres)" class="w-full p-2 mb-4 border rounded">
+                <input type="password" id="confirmInitialPassword" minlength="8" required placeholder="Confirme a nova senha" class="w-full p-2 mb-6 border rounded">
+                <button class="w-full bg-blue-700 text-white font-bold py-2 rounded">Salvar nova senha</button>
             </form>
         </div>
 
@@ -204,8 +215,14 @@
                         <select id="adminOnsiteOperations" multiple size="8" class="w-full p-2 border rounded"></select>
                         <p class="text-xs text-gray-500 mt-1">Use Ctrl (Windows) ou Command (Mac) para selecionar mais de uma operação.</p>
                     </div>
-                    <button id="adminCreateUserButton" class="md:col-span-2 bg-green-600 text-white font-bold p-3 rounded">Criar usuário e enviar convite</button>
+                    <button id="adminCreateUserButton" class="md:col-span-2 bg-green-600 text-white font-bold p-3 rounded">Criar usuário</button>
                 </form>
+                <div id="createdUserCredentials" class="hidden mt-5 p-4 bg-yellow-50 border border-yellow-300 rounded">
+                    <h3 class="font-bold text-yellow-900">Usuário criado — copie a senha agora</h3>
+                    <p class="text-sm text-yellow-800 mb-3">A senha temporária não ficará disponível novamente.</p>
+                    <p><strong>E-mail:</strong> <span id="createdUserEmail"></span></p>
+                    <p><strong>Senha temporária:</strong> <code id="createdUserPassword" class="select-all bg-white px-2 py-1 rounded"></code></p>
+                </div>
             </div>
 
             <div class="bg-white p-6 rounded shadow-md">
@@ -337,6 +354,11 @@
             document.getElementById('userRoleLabel').textContent = roleLabels[profile.role] || profile.role;
             document.getElementById('userNav').classList.remove('hidden');
 
+            if (profile.must_change_password) {
+                document.getElementById('initialPasswordScreen').classList.remove('hidden');
+                return;
+            }
+
             if (profile.role === 'leader') {
                 document.getElementById('leaderScreen').classList.remove('hidden');
                 loadReasons();
@@ -357,6 +379,19 @@
         await supabaseClient.auth.signOut();
         location.reload();
     });
+
+    async function changeInitialPassword(event) {
+        event.preventDefault();
+        const password = document.getElementById('newInitialPassword').value;
+        const confirmation = document.getElementById('confirmInitialPassword').value;
+        if (password !== confirmation) return alert('As senhas não conferem.');
+        const { error: passwordError } = await supabaseClient.auth.updateUser({ password });
+        if (passwordError) return alert('Erro ao trocar a senha: ' + passwordError.message);
+        const { error: profileError } = await supabaseClient.rpc('complete_initial_password_change');
+        if (profileError) return alert('A senha foi alterada, mas não foi possível concluir o primeiro acesso: ' + profileError.message);
+        alert('Senha alterada com sucesso!');
+        location.reload();
+    }
 
     async function uploadSignature(e) {
         const file = e.target.files[0];
@@ -654,11 +689,21 @@
         const button = document.getElementById('adminCreateUserButton');
         button.disabled = true;
         button.textContent = 'Criando usuário...';
-        const { error } = await supabaseClient.functions.invoke('admin-create-user', { body: payload });
+        const { data, error } = await supabaseClient.functions.invoke('admin-create-user', { body: payload });
         button.disabled = false;
-        button.textContent = 'Criar usuário e enviar convite';
-        if (error) return alert('Erro ao criar usuário: ' + error.message);
-        alert('Usuário criado e convite enviado!');
+        button.textContent = 'Criar usuário';
+        if (error) {
+            let details = error.message;
+            try {
+                const response = await error.context.json();
+                details = response.error || details;
+            } catch (_) {}
+            return alert('Erro ao criar usuário: ' + details);
+        }
+        document.getElementById('createdUserEmail').textContent = data.email;
+        document.getElementById('createdUserPassword').textContent = data.temporary_password;
+        document.getElementById('createdUserCredentials').classList.remove('hidden');
+        alert('Usuário criado! Copie a senha temporária exibida na tela.');
         event.target.reset();
         toggleAdminUserFields();
         await loadAdminData();
