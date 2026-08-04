@@ -1,0 +1,5 @@
+let profileContext
+function backToPortal(){location.href=({admin:'admin.html',leader:'leader.html',onsite:'onsite.html'})[profileContext.profile.role]||'index.html'}
+profileForm.addEventListener('submit',async event=>{event.preventDefault();const {error}=await db.rpc('update_my_profile',{new_full_name:profileName.value.trim(),new_phone:profilePhone.value.trim()});if(error)return alert('Erro ao salvar: '+error.message);alert('Perfil atualizado com sucesso!');location.reload()})
+ownPasswordForm.addEventListener('submit',async event=>{event.preventDefault();if(ownPassword.value!==ownPasswordConfirmation.value)return alert('As senhas não conferem.');const {error}=await db.auth.updateUser({password:ownPassword.value});if(error)return alert('Erro ao alterar senha: '+error.message);event.target.reset();alert('Senha alterada com sucesso!')})
+getSessionContext().then(context=>{if(!context)return;profileContext=context;profileName.value=context.profile.full_name||'';profileEmail.value=context.profile.email||context.user.email||'';profilePhone.value=context.profile.phone||'';profileRole.value=roleLabel(context.profile.role)})
