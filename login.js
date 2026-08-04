@@ -1,4 +1,0 @@
-window.PORTAL_CONFIG = {
-  supabaseUrl: 'https://gagedjappvouhbsfzlmd.supabase.co',
-  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhZ2VkamFwcHZvdWhic2Z6bG1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NDkzMzYsImV4cCI6MjEwMTMyNTMzNn0.3Z4mM8ZWxjQ7TTPYtY_GY7yqlVcSkvxmRxYyfy-Wmpg'
-}
