@@ -20,6 +20,13 @@ function nextDay(dateString){
   return date.toISOString().slice(0,10)
 }
 
+function addDays(dateString,days){
+  if(!dateString)return ''
+  const date=new Date(`${dateString}T12:00:00`)
+  date.setDate(date.getDate()+Number(days||1))
+  return date.toISOString().slice(0,10)
+}
+
 function getBase64ImageFromUrl(url){
   return new Promise((resolve,reject)=>{
     const img=new Image()
@@ -90,15 +97,18 @@ window.generateDisciplinaryPDF=async function(request,signature){
   }else{
     const days=Number(request.suspension_days||1)
     const duration=days===3?'3 (três) dias':'1 (um) dia'
-    body='Pela presente fica V.Sa. suspenso das atividades laborais em razão das irregularidades em virtude de '+
-      `${reason} ocorridas nas datas: ${request.incident_date}.\n\n`+
-      `Em razão da conduta, fica aplicada a suspensão disciplinar pelo período de ${duration} a partir de ${formatDateBR(request.suspension_start_date||nextDay(request.issue_date))}.\n\n`+
+    const start=request.suspension_start_date||nextDay(request.issue_date)
+    const returnDate=request.suspension_return_date||addDays(start,days)
+    body=`CPF: ${request.employee_cpf||'________________'}.\n\n`+
+      `Pela presente fica V.Sa. suspenso das atividades laborais pelo período de ${duration}, com início em ${formatDateBR(start)}, `+
+      `devendo retornar às atividades em ${formatDateBR(returnDate)}, em razão das irregularidades informadas nesta comunicação.\n\n`+
+      `Ato de indisciplina: ${reason} Ocorrências em: ${request.incident_date}.\n\n`+
       'Lembramos que a reincidência deste comportamento poderá resultar em justa causa conforme artigo 482 da CLT.'
   }
 
   doc.text(doc.splitTextToSize(body,170),20,65)
 
-  const ySign=160
+  const ySign=advert?160:155
   doc.text('Atenciosamente,',20,ySign)
   if(signature){
     try{
@@ -114,6 +124,7 @@ window.generateDisciplinaryPDF=async function(request,signature){
   doc.text('WE CAN BR – TRABALHO TEMPORARIO LTDA',20,ySign+25)
   doc.line(115,ySign+20,190,ySign+20)
   doc.text('Assinatura do Colaborador',115,ySign+25)
+  if(!advert)doc.text('Ciente: ____/____/________',115,ySign+32)
   doc.line(20,ySign+45,95,ySign+45)
   doc.text('Testemunha 1',20,ySign+50)
   doc.line(115,ySign+45,190,ySign+45)
