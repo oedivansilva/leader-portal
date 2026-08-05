@@ -3,14 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Meu perfil — Portal do Líder</title>
+<meta name="theme-color" content="#EE4D2D">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<title>Meu perfil — NEXO</title>
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <header class="topbar">
 <button class="mobile-menu" onclick="toggleSidebar()">☰</button>
-<div class="brand">Portal do Líder</div>
+<div class="brand" aria-label="NEXO — Gestão de Pessoas e Operações">
+<span class="brand-mark" aria-hidden="true">N</span>
+<span class="brand-copy"><strong>NEXO</strong><small>Gestão de Pessoas e Operações</small></span>
+</div>
 <div class="userbox"><div><strong data-user-name></strong><small data-user-role></small></div><button class="btn btn-danger" onclick="logout()">Sair</button></div>
 </header>
 <div class="app">

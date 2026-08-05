@@ -1,5 +1,11 @@
 let dashboardCharts = {}
 
+if (window.Chart) {
+  Chart.defaults.font.family = "'Poppins', 'Segoe UI', Arial, sans-serif"
+  Chart.defaults.color = '#6F7480'
+  Chart.defaults.borderColor = '#ECECF0'
+}
+
 const absCodes = ['AF', 'AL', 'AM', 'F', 'FJ', 'NS', 'justificada', 'injustificada']
 const justifiedCodes = ['AM', 'FJ', 'justificada']
 const unjustifiedCodes = ['F', 'NS', 'injustificada']
@@ -127,7 +133,7 @@ async function loadDashboard() {
       labels: Object.keys(statusCounts),
       datasets: [{
         data: Object.values(statusCounts),
-        backgroundColor: ['#f59e0b', '#3b82f6', '#22c55e']
+        backgroundColor: ['#FFB000', '#EE4D2D', '#2EAE67']
       }]
     },
     options: {
@@ -151,7 +157,7 @@ async function loadDashboard() {
     type: 'bar',
     data: {
       labels: operationLabels,
-      datasets: [{ label: 'Faltas', data: operationAbsences }]
+      datasets: [{ label: 'Faltas', data: operationAbsences, backgroundColor: '#EE4D2D', borderRadius: 8 }]
     },
     options: {
       responsive: true,
@@ -176,7 +182,7 @@ async function loadDashboard() {
     type: 'bar',
     data: {
       labels: regions.map(item => item.label),
-      datasets: [{ label: 'Medidas', data: regions.map(item => item.value) }]
+      datasets: [{ label: 'Medidas', data: regions.map(item => item.value), backgroundColor: '#F56B3F', borderRadius: 8 }]
     },
     options: {
       responsive: true,
@@ -191,7 +197,7 @@ async function loadDashboard() {
     type: 'bar',
     data: {
       labels: leaders.map(item => item.label),
-      datasets: [{ label: 'Medidas', data: leaders.map(item => item.value) }]
+      datasets: [{ label: 'Medidas', data: leaders.map(item => item.value), backgroundColor: '#EE4D2D', borderRadius: 8 }]
     },
     options: {
       indexAxis: 'y',
@@ -230,12 +236,12 @@ async function loadDashboard() {
         {
           label: 'Faltas (F/NS)',
           data: hasScaleAbsenceData ? scaleAbsenceRows.map(item => item.absences) : [0],
-          backgroundColor: '#ef4444'
+          backgroundColor: '#D83E22'
         },
         {
           label: 'Atestados (AM)',
           data: hasScaleAbsenceData ? scaleAbsenceRows.map(item => item.medicalCertificates) : [0],
-          backgroundColor: '#3b82f6'
+          backgroundColor: '#2EC4B6'
         }
       ]
     },
@@ -310,7 +316,7 @@ async function loadDashboard() {
       datasets: [{
         label: 'Colaboradores',
         data: [admissions, terminations, voluntary, involuntary],
-        backgroundColor: ['#22c55e', '#ef4444', '#f59e0b', '#7c3aed']
+        backgroundColor: ['#2EC4B6', '#EE4D2D', '#FFB000', '#7C5CFC']
       }]
     },
     options: {

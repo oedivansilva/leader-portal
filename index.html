@@ -1,6 +1,53 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Portal do Líder — Acesso</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body>
-<header class="topbar"><div class="brand">Portal do Líder</div></header>
-<main class="auth-shell">
-  <section id="loginCard" class="auth-card"><h1>Acesso ao portal</h1><p class="muted">Entre com a conta fornecida pelo administrador.</p><form id="loginForm" class="stack"><div class="field"><label>E-mail</label><input id="email" type="email" class="input" required></div><div class="field"><label>Senha</label><input id="password" type="password" class="input" required></div><button class="btn btn-primary">Entrar</button></form></section>
-  <section id="passwordCard" class="auth-card hidden"><h1>Crie sua senha pessoal</h1><p class="muted">Substitua a senha temporária antes de continuar.</p><form id="passwordForm" class="stack"><div class="field"><label>Nova senha</label><input id="newPassword" type="password" minlength="8" class="input" required></div><div class="field"><label>Confirmar senha</label><input id="confirmPassword" type="password" minlength="8" class="input" required></div><button class="btn btn-primary">Salvar e continuar</button></form></section>
-</main><script src="config.js"></script><script src="common.js"></script><script src="login.js"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#EE4D2D">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<title>NEXO — Acesso</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="auth-page">
+<header class="topbar auth-topbar"><div class="brand" aria-label="NEXO — Gestão de Pessoas e Operações">
+<span class="brand-mark" aria-hidden="true">N</span>
+<span class="brand-copy"><strong>NEXO</strong><small>Gestão de Pessoas e Operações</small></span>
+</div></header>
+<main class="auth-shell auth-shell-branded">
+  <section class="auth-visual" aria-hidden="true">
+    <span class="auth-shape auth-shape-one"></span>
+    <span class="auth-shape auth-shape-two"></span>
+    <span class="auth-shape auth-shape-three"></span>
+    <div class="auth-visual-content">
+      <span class="auth-eyebrow">NEXO</span>
+      <h1>Pessoas conectadas.<br>Operações mais inteligentes.</h1>
+      <p>Presença, solicitações disciplinares e indicadores em um único ambiente.</p>
+    </div>
+  </section>
+  <div class="auth-card-stack">
+    <section id="loginCard" class="auth-card">
+      <span class="auth-card-kicker">Bem-vindo ao NEXO</span>
+      <h1>Acesse sua conta</h1>
+      <p class="muted">Entre com a conta fornecida pelo administrador.</p>
+      <form id="loginForm" class="stack">
+        <div class="field"><label>E-mail</label><input id="email" type="email" class="input" autocomplete="email" required></div>
+        <div class="field"><label>Senha</label><input id="password" type="password" class="input" autocomplete="current-password" required></div>
+        <button class="btn btn-primary auth-submit">Entrar</button>
+      </form>
+    </section>
+    <section id="passwordCard" class="auth-card hidden">
+      <span class="auth-card-kicker">Primeiro acesso</span>
+      <h1>Crie sua senha pessoal</h1>
+      <p class="muted">Substitua a senha temporária antes de continuar.</p>
+      <form id="passwordForm" class="stack">
+        <div class="field"><label>Nova senha</label><input id="newPassword" type="password" minlength="8" class="input" autocomplete="new-password" required></div>
+        <div class="field"><label>Confirmar senha</label><input id="confirmPassword" type="password" minlength="8" class="input" autocomplete="new-password" required></div>
+        <button class="btn btn-primary auth-submit">Salvar e continuar</button>
+      </form>
+    </section>
+  </div>
+</main>
+<script src="config.js"></script><script src="common.js"></script><script src="login.js"></script>
+</body>
+</html>
