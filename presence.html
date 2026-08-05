@@ -13,10 +13,11 @@
 <div class="page-head"><div><h1>Controle de Presença</h1><p class="muted">Marque a situação diária dos colaboradores no mês selecionado.</p></div><button id="saveAttendanceButton" class="btn btn-success" onclick="saveAttendance()" disabled>Salvar marcações</button></div>
 <section class="card">
 <div class="toolbar"><input id="presenceMonth" type="month" class="input" style="max-width:190px"><select id="presenceOperationFilter" class="input" style="max-width:330px"></select><select id="presenceShiftFilter" class="input" style="max-width:330px"></select><input id="presenceSearch" class="input" placeholder="Pesquisar MAT ou nome" style="max-width:280px"><button class="btn btn-primary" onclick="loadPresence()">Atualizar</button></div>
-<div class="attendance-legend"><span class="attendance-status status-p">P</span> Presença <span class="attendance-status status-f">F</span> Falta injustificada <span class="attendance-status status-am">AM</span> Atestado médico <span class="attendance-status status-off">FO</span> Folga pela escala</div>
-<p class="muted">Clique na célula para alternar entre P, F, AM e vazio. Os dias mudam automaticamente conforme o mês e as folgas respeitam o histórico de escala.</p>
+<div id="attendanceLegend" class="attendance-legend"></div>
+<p class="muted">Clique em uma célula e escolha a ocorrência. Os dias mudam automaticamente conforme o mês e as folgas previstas na escala aparecem como FO.</p>
 </section>
 <section class="card attendance-wrap"><table id="attendanceTable" class="attendance-table"><thead id="attendanceHead"></thead><tbody id="attendanceRows"></tbody></table></section>
 </main></div>
+<dialog id="attendancePicker" class="attendance-picker"><div class="picker-head"><div><strong id="pickerEmployee"></strong><small id="pickerDate" class="muted"></small></div><button class="picker-close" type="button" onclick="closeAttendancePicker()">×</button></div><div id="attendanceOptions" class="attendance-options"></div></dialog>
 <script src="config.js"></script><script src="common.js"></script><script src="presence.js"></script>
 </body></html>
