@@ -69,7 +69,7 @@
             <div class="notice"><strong>Atenção:</strong> confira se o início e o retorno correspondem a dias de trabalho do colaborador.</div>
           </div>
           <div class="notice request-editor-warning">
-            Se já existir um PDF, ele será mantido no Drive como histórico, mas deixará de ser a versão válida. O Onsite precisará gerar um novo documento.
+            Se o documento já estiver assinado, ele será invalidado. O Onsite precisará revisar e assinar novamente após a alteração.
           </div>
           <div class="portal-modal-actions">
             <button type="button" class="btn btn-light" data-editor-close>Cancelar</button>
@@ -140,7 +140,7 @@
     ensureModal()
     try{
       const [requestResult,occurrenceResult,reasons]=await Promise.all([
-        db.from('disciplinary_requests').select('id,employee_name,operation_id,penalty_type,reason_id,incident_date,issue_date,suspension_days,suspension_start_date,suspension_return_date,status,applied_date,operations(cost_center,department)').eq('id',requestId).single(),
+        db.from('disciplinary_requests').select('id,employee_name,operation_id,penalty_type,reason_id,incident_date,issue_date,suspension_days,suspension_start_date,suspension_return_date,status,applied_date,document_signed_at,operations(cost_center,department)').eq('id',requestId).single(),
         db.from('request_occurrences').select('occurrence_date').eq('request_id',requestId).order('occurrence_date'),
         getReasons()
       ])
@@ -192,9 +192,10 @@
       })
       if(error)throw new Error(error.message)
       const invalidated=Number(data?.invalidated_documents||0)
+      const hadSignedDocument=Boolean(state.request?.document_signed_at)
       close()
       if(data?.updated===false)alert('Nenhuma alteração foi identificada.')
-      else if(invalidated)alert('Solicitação atualizada. O documento anterior foi invalidado e o Onsite deverá gerar uma nova versão.')
+      else if(invalidated||hadSignedDocument)alert('Solicitação atualizada. O documento assinado anterior foi invalidado e o Onsite deverá assinar novamente.')
       else alert('Solicitação atualizada com sucesso.')
       if(typeof state.onSaved==='function')await state.onSaved()
     }catch(error){alert('Erro ao salvar: '+error.message+'\n\nConfirme se o arquivo ATIVAR_EDICAO_SOLICITACOES.sql foi executado no Supabase.')}

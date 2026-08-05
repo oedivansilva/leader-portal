@@ -92,3 +92,34 @@ window.downloadDisciplinaryDocument=async function(documentId,fallbackName='docu
     setTimeout(()=>URL.revokeObjectURL(url),30000)
   }catch(error){alert(error.message)}
 }
+
+// Documento assinado gerado sob demanda. O PDF não é armazenado: os dados e a
+// assinatura registrada no momento da geração são recuperados com segurança.
+window.getSignedDisciplinaryDocumentPayload=async function(requestId){
+  const {data,error}=await db.rpc('get_signed_disciplinary_document_payload',{target_request_id:requestId})
+  if(error)throw new Error(error.message)
+  if(!data?.request||!data?.signature)throw new Error('O documento assinado ainda não está disponível.')
+  return data
+}
+
+window.generateSignedDisciplinaryDocument=async function(requestId,{download=true}={}){
+  if(typeof generateDisciplinaryPDF!=='function')throw new Error('O gerador de PDF não foi carregado nesta página.')
+  const payload=await getSignedDisciplinaryDocumentPayload(requestId)
+  return generateDisciplinaryPDF(payload.request,payload.signature,{download,kind:'ASSINADO'})
+}
+
+window.downloadSignedDisciplinaryDocument=async function(requestId){
+  try{
+    await generateSignedDisciplinaryDocument(requestId,{download:true})
+  }catch(error){alert(error.message)}
+}
+
+window.viewSignedDisciplinaryDocument=async function(requestId){
+  const preview=window.open('about:blank','_blank')
+  try{
+    const generated=await generateSignedDisciplinaryDocument(requestId,{download:false})
+    const url=URL.createObjectURL(generated.blob)
+    if(preview)preview.location.href=url;else window.open(url,'_blank')
+    setTimeout(()=>URL.revokeObjectURL(url),120000)
+  }catch(error){preview?.close();alert(error.message)}
+}

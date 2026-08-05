@@ -10,8 +10,14 @@ function documentActionButtons(document,label){
 }
 function renderDocumentCell(request){
   if(!driveDocumentsEnabled){
-    const label=['gerado','aplicado'].includes(request.status)?'Gerar PDF novamente':'Gerar PDF'
-    return `<button class="btn btn-success" onclick="prepareDocument('${request.id}',this)">${label}</button><small class="document-hint">O arquivo será baixado neste dispositivo.</small>`
+    if(request.document_signed_at){
+      return `<div class="document-cell">
+        <div><span class="badge badge-green">Assinado</span></div>
+        <div class="document-actions"><button class="btn btn-light btn-small" onclick="viewSignedDisciplinaryDocument('${request.id}')">Visualizar</button><button class="btn btn-primary btn-small" onclick="downloadSignedDisciplinaryDocument('${request.id}')">Baixar PDF</button></div>
+        <small class="muted">Assinado em ${new Date(request.document_signed_at).toLocaleString('pt-BR')}</small>
+      </div>`
+    }
+    return `<button class="btn btn-success" onclick="prepareDocument('${request.id}',this)">Assinar e gerar PDF</button><small class="document-hint">Após a assinatura, o líder poderá baixar o documento no próprio painel.</small>`
   }
   const original=activeDocument(request.id,['original'])
   const signed=activeDocument(request.id,['corrigido','assinado'])
@@ -82,26 +88,26 @@ async function fetchRequest(id){
 }
 
 async function prepareDocument(id,button){
-  if(!signature)return alert('Cadastre sua assinatura em Meu perfil antes de gerar o documento.')
+  if(!signature)return alert('Cadastre sua assinatura em Meu perfil antes de assinar o documento.')
   const alreadyExists=driveDocumentsEnabled&&Boolean(activeDocument(id,['original']))
   if(alreadyExists&&!confirm('Já existe um documento original salvo. Deseja gerar e armazenar uma nova versão?'))return
   const originalText=button?.textContent
-  if(button){button.disabled=true;button.textContent='Gerando...'}
+  if(button){button.disabled=true;button.textContent=driveDocumentsEnabled?'Gerando...':'Assinando...'}
   try{
-    const request=await fetchRequest(id)
-    if(!request)return
-    if(request.penalty_type.toLowerCase().includes('susp')){
-      if(!request.employee_id)throw new Error('Esta solicitação não está associada a um colaborador cadastrado.')
-      const {data:privateData,error}=await db.from('employee_private_data').select('cpf').eq('employee_id',request.employee_id).single()
-      if(error||!privateData?.cpf)throw new Error('CPF não encontrado. Peça ao Admin para revisar o cadastro do colaborador.')
-      request.employee_cpf=privateData.cpf
-    }
     if(!driveDocumentsEnabled){
-      await generateDisciplinaryPDF(request,signature,{kind:'ORIGINAL'})
-      const {error}=await db.from('disciplinary_requests').update({status:'gerado'}).eq('id',request.id)
-      if(error)throw error
-      alert('PDF gerado e baixado com sucesso.')
+      const {error}=await db.rpc('sign_disciplinary_request',{target_request_id:id})
+      if(error)throw new Error(error.message)
+      await generateSignedDisciplinaryDocument(id,{download:true})
+      alert('Documento assinado e liberado para o líder.')
     }else{
+      const request=await fetchRequest(id)
+      if(!request)return
+      if(request.penalty_type.toLowerCase().includes('susp')){
+        if(!request.employee_id)throw new Error('Esta solicitação não está associada a um colaborador cadastrado.')
+        const {data:privateData,error}=await db.from('employee_private_data').select('cpf').eq('employee_id',request.employee_id).single()
+        if(error||!privateData?.cpf)throw new Error('CPF não encontrado. Peça ao Admin para revisar o cadastro do colaborador.')
+        request.employee_cpf=privateData.cpf
+      }
       const generated=await generateDisciplinaryPDF(request,signature,{download:false,kind:'ORIGINAL'})
       const result=await uploadDisciplinaryDocument(request.id,'original',generated.blob,generated.fileName)
       alert(`Documento salvo com sucesso.\n\n${result.folder_path}\n${result.file_name}`)

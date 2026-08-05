@@ -30,8 +30,15 @@ async function loadRequests(){
     }
   }
   leaderRequestRows.innerHTML=rows.map(r=>{
-    const signed=signedByRequest[r.id]
-    const documentCell=!driveDocumentsEnabled?'<span class="muted">Download pelo painel não ativado.</span>':signed?`<div class="document-cell"><span class="badge badge-green">Assinado disponível</span><div class="document-actions"><button class="btn btn-light btn-small" onclick="viewDisciplinaryDocument('${signed.id}')">Visualizar</button><button class="btn btn-primary btn-small" onclick="downloadDisciplinaryDocument('${signed.id}')">Baixar PDF</button></div><small class="muted">Disponível em ${new Date(signed.created_at).toLocaleString('pt-BR')}</small></div>`:'<span class="muted">Aguardando o Onsite anexar o documento assinado.</span>'
+    const storedDocument=signedByRequest[r.id]
+    let documentCell
+    if(storedDocument){
+      documentCell=`<div class="document-cell"><span class="badge badge-green">Assinado disponível</span><div class="document-actions"><button class="btn btn-light btn-small" onclick="viewDisciplinaryDocument('${storedDocument.id}')">Visualizar</button><button class="btn btn-primary btn-small" onclick="downloadDisciplinaryDocument('${storedDocument.id}')">Baixar PDF</button></div><small class="muted">Disponível em ${new Date(storedDocument.created_at).toLocaleString('pt-BR')}</small></div>`
+    }else if(r.document_signed_at){
+      documentCell=`<div class="document-cell"><span class="badge badge-green">Assinado disponível</span><div class="document-actions"><button class="btn btn-light btn-small" onclick="viewSignedDisciplinaryDocument('${r.id}')">Visualizar</button><button class="btn btn-primary btn-small" onclick="downloadSignedDisciplinaryDocument('${r.id}')">Baixar PDF</button></div><small class="muted">Assinado pelo Onsite em ${new Date(r.document_signed_at).toLocaleString('pt-BR')}</small></div>`
+    }else{
+      documentCell='<span class="muted">Aguardando o Onsite assinar o documento.</span>'
+    }
     return `<tr><td>${escapeHTML(r.employee_name)}<br><small class="muted">Solicitado por ${escapeHTML(ctx.profile.full_name)}</small></td><td>${escapeHTML(r.penalty_type)}</td><td>${escapeHTML(r.incident_date)}</td><td><span class="badge ${r.status==='aplicado'?'badge-green':r.assigned_onsite_id?'badge-blue':'badge-yellow'}">${escapeHTML(r.status)}</span></td><td>${new Date(r.created_at).toLocaleDateString('pt-BR')}</td><td>${documentCell}</td><td>${r.applied_date?new Date(`${r.applied_date}T00:00:00`).toLocaleDateString('pt-BR'):r.status==='gerado'?`<button class="btn btn-success" onclick="confirmApplication('${r.id}')">Confirmar aplicação</button>`:'Aguardando documento'}</td><td>${r.applied_date||r.status==='aplicado'?'<span class="badge badge-green">Bloqueada</span>':`<button class="btn btn-light btn-small" onclick="editLeaderRequest('${r.id}')">Editar</button>`}</td></tr>`
   }).join('')||'<tr><td colspan="8" class="empty">Nenhuma solicitação.</td></tr>'
 }
