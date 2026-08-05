@@ -33,6 +33,11 @@
 </div>
 <button class="btn btn-primary" onclick="document.getElementById('requestCard').classList.toggle('hidden')">+ Nova solicitação</button>
 </div>
+<div id="leaderRecentActivity" class="activity-strip hidden"></div>
+<section id="disciplinarySuggestionCard" class="card suggestion-card hidden">
+<div class="suggestion-head"><div><h2 id="suggestionTitle">Faltas aguardando análise</h2><p class="muted">As sugestões consideram faltas injustificadas ainda não vinculadas a uma solicitação.</p></div></div>
+<div id="disciplinarySuggestions" class="suggestion-list"></div>
+</section>
 <section id="requestCard" class="card hidden">
 <h2>Nova solicitação</h2>
 <form id="requestForm" class="grid-2">

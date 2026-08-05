@@ -16,7 +16,7 @@ Os arquivos abaixo não são usados pelo GitHub Pages, mas estão no pacote para
 
 ## Novos módulos
 
-- `presence.html`: grade mensal usada pelo líder para marcar P (presença), F (falta injustificada) ou AM (atestado médico). Os dias de folga aparecem bloqueados como FO;
+- `presence.html`: grade mensal com a legenda completa de presença, faltas, afastamentos, férias, folgas e movimentações. Ao clicar em um dia, o líder escolhe o código em uma lista;
 - `workforce.js`: listas administrativas de presença e turnover;
 - `dashboard.js`: indicadores de ABS, solicitações disciplinares, tempo de aplicação e turnover.
 
@@ -30,8 +30,12 @@ Quando a escala de um colaborador for alterada, clique em **Salvar** normalmente
 
 Os portais do Líder e do Onsite possuem menus laterais próprios, exibindo somente as funções liberadas para cada perfil.
 
+As marcações `F` e `NS` ainda não vinculadas aparecem na página de Solicitações disciplinares. O portal sugere Advertência no primeiro caso e Suspensão quando já existe advertência aplicada ao colaborador. A decisão e o envio continuam dependendo da confirmação do líder. Ao enviar, as datas de falta são vinculadas à solicitação e deixam de aparecer como pendentes.
+
+Marcações, alterações, remoções, criação de solicitações e mudanças de status geram registros em `system_activity_log`. O nome de quem realizou a ação aparece discretamente nas telas operacionais e o histórico completo fica disponível na aba Auditoria do Admin.
+
 ## Atualização desta versão
 
-Depois de enviar os arquivos ao GitHub, execute novamente todo o conteúdo de `ATIVAR_PRESENCA_ABS_TURNOVER.sql` no SQL Editor do Supabase. Essa etapa cria o histórico de escalas e permite salvar as marcações P/F/AM da grade mensal. O script preserva os registros de presença já existentes.
+Depois de enviar os arquivos ao GitHub, execute novamente todo o conteúdo de `ATIVAR_PRESENCA_ABS_TURNOVER.sql` no SQL Editor do Supabase. Essa etapa cria o histórico de escalas e libera todos os códigos da grade mensal. O script converte e preserva as marcações P/F/AM já existentes.
 
 Depois do commit, aguarde a publicação, saia do portal e entre novamente. O Admin será direcionado para `admin.html`.
