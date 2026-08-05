@@ -35,3 +35,28 @@
 .chart-box-turnover{height:245px;max-width:980px;margin:18px auto 0}
 @media(max-width:1100px){.dashboard-chart-layout{grid-template-columns:1fr}.dashboard-chart-left{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.dashboard-pie-card{width:100%}.dashboard-primary-metrics{grid-template-columns:1fr;align-self:stretch}.dashboard-time-card,.dashboard-shift-absence-card{grid-column:1/-1}.chart-box-pie{height:280px}.chart-box-shift{height:260px}}
 @media(max-width:850px){.dashboard-chart-left{grid-template-columns:1fr}.dashboard-primary-metrics,.dashboard-time-grid{grid-template-columns:1fr}.dashboard-time-card,.dashboard-shift-absence-card{grid-column:auto}.chart-box-bar{height:260px}.chart-box-turnover{height:245px}.chart-box-pie{height:270px}.chart-box-shift{height:270px}}
+
+/* Controle de Presença: mantém datas e dias da semana visíveis ao rolar a lista */
+.attendance-wrap{
+  position:relative;
+  max-height:calc(100vh - 205px);
+  min-height:360px;
+  overflow:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+.attendance-table thead th{
+  position:sticky;
+  top:0;
+  z-index:7;
+  box-shadow:0 1px 0 #cbd5e1,0 5px 10px -10px #0f172a;
+}
+.attendance-table thead th.sticky-col{
+  z-index:10;
+}
+@media(max-width:850px){
+  .attendance-wrap{
+    max-height:calc(100vh - 155px);
+    min-height:320px;
+  }
+}
