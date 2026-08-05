@@ -57,7 +57,24 @@ function getScaledDimensions(width,height,maxWidth,maxHeight){
   return {width:width*ratio,height:height*ratio}
 }
 
-window.generateDisciplinaryPDF=async function(request,signature){
+function safeFileToken(value,maxLength=90){
+  return String(value||'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toUpperCase().trim().replace(/[^A-Z0-9]+/g,'-')
+    .replace(/^-+|-+$/g,'').slice(0,maxLength)||'NAO-INFORMADO'
+}
+
+function localDocumentFileName(request,kind='ORIGINAL'){
+  const suspension=request.penalty_type.toLowerCase().includes('susp')
+  const prefix=suspension?'SUSP':'ADV'
+  const registration=safeFileToken(request.employee_registration||request.employees?.registration||'SEM-MAT',40)
+  const employee=safeFileToken(request.employee_name,90)
+  const requestCode=`SOL-${String(request.id||'').replace(/-/g,'').slice(0,8).toUpperCase()||'SEM-ID'}`
+  const issueDate=(request.issue_date||'').split('-').reverse().join('-')||'SEM-DATA'
+  return `${prefix}_MAT-${registration}_${employee}_${requestCode}_${issueDate}_${kind}.pdf`
+}
+
+window.generateDisciplinaryPDF=async function(request,signature,options={}){
   const {jsPDF}=window.jspdf
   const doc=new jsPDF()
   const advert=request.penalty_type.toLowerCase().includes('advert')
@@ -130,6 +147,8 @@ window.generateDisciplinaryPDF=async function(request,signature){
   doc.line(115,ySign+45,190,ySign+45)
   doc.text('Testemunha 2',115,ySign+50)
 
-  const safe=request.employee_name.replace(/[^a-zA-ZÀ-ÿ0-9_-]+/g,'_')
-  doc.save(`${request.penalty_type}_${safe}_${request.issue_date}.pdf`)
+  const fileName=localDocumentFileName(request,options.kind||'ORIGINAL')
+  const blob=doc.output('blob')
+  if(options.download!==false)doc.save(fileName)
+  return {doc,blob,fileName}
 }

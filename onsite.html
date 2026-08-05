@@ -33,14 +33,6 @@
 <p class="muted">As solicitações das suas operações chegam automaticamente.</p>
 </div>
 </div>
-<section class="card">
-<div class="field">
-<label>Minha assinatura</label>
-<input id="signatureInput" type="file" accept="image/*" class="input">
-<small class="muted">A imagem é usada somente na geração do documento.</small>
-</div>
-<img id="signaturePreview" class="hidden" style="max-height:70px;margin-top:12px">
-</section>
 <section class="card table-wrap">
 <table class="table">
 <thead>
@@ -50,8 +42,9 @@
 <th>Medida</th>
 <th>Motivo</th>
 <th>Status</th>
-<th>Documento</th>
+<th>Documentos no Drive</th>
 <th>Aplicação</th>
+<th>Ações</th>
 </tr>
 </thead>
 <tbody id="onsiteRequestRows">
@@ -63,6 +56,8 @@
 <script src="config.js">
 </script>
 <script src="common.js">
+</script>
+<script src="request-editor.js">
 </script>
 <script src="pdf.js">
 </script>
