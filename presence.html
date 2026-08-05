@@ -1,5 +1,22 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Controle de Presença</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body>
-<header class="topbar"><div class="brand">Portal do Líder</div><div class="userbox"><div><strong data-user-name></strong><small data-user-role></small></div><a class="btn btn-light" href="leader.html">Solicitações</a><a class="btn btn-light" href="profile.html">Meu perfil</a><button class="btn btn-danger" onclick="logout()">Sair</button></div></header>
-<main class="main" style="max-width:1150px;margin:auto"><div class="page-head"><div><h1>Controle de Presença</h1><p class="muted">Registre faltas justificadas e injustificadas.</p></div></div>
-<section class="card"><div class="toolbar"><input id="presenceSearch" class="input" placeholder="Pesquisar MAT ou nome" style="max-width:300px"><select id="presenceOperationFilter" class="input" style="max-width:320px"></select><select id="presenceShiftFilter" class="input" style="max-width:220px"></select></div><form id="absenceForm" class="grid-2"><div class="field"><label>Colaborador</label><select id="absenceEmployee" class="input" required></select></div><div class="field"><label>Tipo</label><select id="absenceType" class="input"><option value="injustificada">Falta injustificada</option><option value="justificada">Falta justificada (atestado)</option></select></div><div class="field"><label>Data da falta</label><div style="display:flex;gap:8px"><input id="absenceDate" type="date" class="input"><button type="button" class="btn btn-primary" onclick="addAbsenceDate()">+ Adicionar</button></div><div id="absenceDatesList" style="margin-top:8px"><span class="muted">Nenhuma data adicionada.</span></div></div><div class="field"><label>Observação</label><textarea id="absenceNotes" class="input" rows="3" placeholder="Opcional"></textarea></div><button class="btn btn-success" style="grid-column:1/-1">Registrar falta</button></form></section>
-<section class="card table-wrap"><h2>Registros recentes</h2><table class="table"><thead><tr><th>Data</th><th>MAT</th><th>Colaborador</th><th>Operação</th><th>Tipo</th><th>Observação</th></tr></thead><tbody id="absenceRows"></tbody></table></section></main><script src="config.js"></script><script src="common.js"></script><script src="presence.js"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Controle de Presença — Portal do Líder</title>
+<link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<header class="topbar"><button class="mobile-menu" onclick="toggleSidebar()">☰</button><div class="brand">Portal do Líder</div><div class="userbox"><div><strong data-user-name></strong><small data-user-role></small></div><button class="btn btn-danger" onclick="logout()">Sair</button></div></header>
+<div class="app">
+<aside class="sidebar"><div class="nav-title">Liderança</div><a class="nav-btn" href="leader.html">Solicitações disciplinares</a><a class="nav-btn active" href="presence.html">Controle de Presença</a><a class="nav-btn" href="profile.html">Meu perfil</a></aside>
+<main class="main">
+<div class="page-head"><div><h1>Controle de Presença</h1><p class="muted">Marque a situação diária dos colaboradores no mês selecionado.</p></div><button id="saveAttendanceButton" class="btn btn-success" onclick="saveAttendance()" disabled>Salvar marcações</button></div>
+<section class="card">
+<div class="toolbar"><input id="presenceMonth" type="month" class="input" style="max-width:190px"><select id="presenceOperationFilter" class="input" style="max-width:330px"></select><select id="presenceShiftFilter" class="input" style="max-width:330px"></select><input id="presenceSearch" class="input" placeholder="Pesquisar MAT ou nome" style="max-width:280px"><button class="btn btn-primary" onclick="loadPresence()">Atualizar</button></div>
+<div class="attendance-legend"><span class="attendance-status status-p">P</span> Presença <span class="attendance-status status-f">F</span> Falta injustificada <span class="attendance-status status-am">AM</span> Atestado médico <span class="attendance-status status-off">FO</span> Folga pela escala</div>
+<p class="muted">Clique na célula para alternar entre P, F, AM e vazio. Os dias mudam automaticamente conforme o mês e as folgas respeitam o histórico de escala.</p>
+</section>
+<section class="card attendance-wrap"><table id="attendanceTable" class="attendance-table"><thead id="attendanceHead"></thead><tbody id="attendanceRows"></tbody></table></section>
+</main></div>
+<script src="config.js"></script><script src="common.js"></script><script src="presence.js"></script>
+</body></html>

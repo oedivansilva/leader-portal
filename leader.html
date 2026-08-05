@@ -10,6 +10,7 @@
 </head>
 <body>
 <header class="topbar">
+<button class="mobile-menu" onclick="toggleSidebar()">☰</button>
 <div class="brand">Portal do Líder</div>
 <div class="userbox">
 <div>
@@ -18,12 +19,12 @@
 <small data-user-role>
 </small>
 </div>
-<a class="btn btn-light" href="profile.html">Meu perfil</a>
-<a class="btn btn-light" href="presence.html">Controle de Presença</a>
 <button class="btn btn-danger" onclick="logout()">Sair</button>
 </div>
 </header>
-<main class="main" style="max-width:1100px;margin:auto">
+<div class="app">
+<aside class="sidebar"><div class="nav-title">Liderança</div><a class="nav-btn active" href="leader.html">Solicitações disciplinares</a><a class="nav-btn" href="presence.html">Controle de Presença</a><a class="nav-btn" href="profile.html">Meu perfil</a></aside>
+<main class="main">
 <div class="page-head">
 <div>
 <h1>Solicitações disciplinares</h1>
@@ -106,6 +107,7 @@
 </table>
 </section>
 </main>
+</div>
 <script src="config.js">
 </script>
 <script src="common.js">

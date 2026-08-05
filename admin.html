@@ -31,13 +31,13 @@
 <aside class="sidebar">
 <div class="nav-title">Administração</div>
 <button class="nav-btn active" onclick="showPage('overview',this)">Visão geral</button>
-<button class="nav-btn" onclick="showPage('employees',this)">Colaboradores</button>
 <button class="nav-btn" onclick="showPage('requests',this)">Solicitações</button>
+<button class="nav-btn" onclick="showPage('users',this)">Usuários</button>
+<button class="nav-btn" onclick="showPage('structure',this)">Estrutura</button>
+<button class="nav-btn" onclick="showPage('employees',this)">Colaboradores</button>
+<button class="nav-btn" onclick="showPage('management',this)">Escalas e benefícios</button>
 <button class="nav-btn" onclick="showPage('presenceAdmin',this)">Controle de Presença</button>
 <button class="nav-btn" onclick="showPage('turnoverAdmin',this)">Turnover</button>
-<button class="nav-btn" onclick="showPage('management',this)">Escalas e benefícios</button>
-<button class="nav-btn" onclick="showPage('structure',this)">Estrutura</button>
-<button class="nav-btn" onclick="showPage('users',this)">Usuários</button>
 <button class="nav-btn" onclick="showPage('audit',this)">Auditoria</button>
 </aside>
 <main class="main">
@@ -100,7 +100,7 @@
 </div>
 </div>
 </div>
-<div class="card"><h3>Turnover</h3><div class="grid-3"><div class="stat"><span>Quadro ativo no fim do período</span><strong id="metricActiveHeadcount">0</strong></div><div class="stat"><span>Admissões no período</span><strong id="metricAdmissions">0</strong></div><div class="stat"><span>Desligamentos no período</span><strong id="metricTerminations">0</strong></div><div class="stat"><span>Turnover geral</span><strong id="metricGeneralTurnover">—</strong></div><div class="stat"><span>Turnover de desligamentos</span><strong id="metricTurnover">—</strong></div><div class="stat"><span>Desligamentos voluntários</span><strong id="metricVoluntary">0</strong></div><div class="stat"><span>Desligamentos involuntários</span><strong id="metricInvoluntary">0</strong></div></div><div style="margin-top:18px"><canvas id="turnoverChart"></canvas></div></div>
+<div class="card"><h3>Turnover</h3><div class="grid-3"><div class="stat"><span>Quadro ativo no fim do período</span><strong id="metricActiveHeadcount">0</strong></div><div class="stat"><span>Admissões no período</span><strong id="metricAdmissions">0</strong></div><div class="stat"><span>Desligamentos no período</span><strong id="metricTerminations">0</strong></div><div class="stat"><span>Turnover geral</span><strong id="metricGeneralTurnover">—</strong></div><div class="stat"><span>Turnover de desligamentos</span><strong id="metricTurnover">—</strong></div><div class="stat"><span>Desligamentos voluntários</span><strong id="metricVoluntary">0</strong></div><div class="stat"><span>Desligamentos involuntários</span><strong id="metricInvoluntary">0</strong></div></div><div style="margin-top:18px"><canvas id="turnoverChart"></canvas></div><div class="table-wrap" style="margin-top:18px"><h4>Colaboradores considerados no período</h4><table class="table"><thead><tr><th>Movimentação</th><th>MAT</th><th>Colaborador</th><th>Data</th></tr></thead><tbody id="turnoverMovementRows"></tbody></table></div></div>
 </section>
   <section id="requests" class="page">
 <div class="page-head">
@@ -409,6 +409,7 @@
 <select id="employeeScale" class="input" required>
 </select>
 </div>
+<input id="employeeScaleEffectiveDate" type="hidden">
 <div class="field">
 <label>Vencimento do contrato</label>
 <input id="employeeContractEnd" type="date" class="input">
