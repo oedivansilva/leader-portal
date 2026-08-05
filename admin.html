@@ -62,23 +62,7 @@
 <h3>Status das solicitações</h3>
 <div class="chart-box chart-box-pie"><canvas id="statusChart"></canvas></div>
 </div>
-</div>
-<div class="dashboard-chart-right">
-<div class="card">
-<h3>ABS por operação</h3>
-<div class="chart-box chart-box-bar"><canvas id="absOperationChart"></canvas></div>
-</div>
-<div class="card">
-<h3>Medidas por região</h3>
-<div class="chart-box chart-box-bar"><canvas id="regionChart"></canvas></div>
-</div>
-<div class="card">
-<h3>Medidas por líder</h3>
-<div class="chart-box chart-box-bar"><canvas id="leaderChart"></canvas></div>
-</div>
-</div>
-</div>
-<div class="grid-3">
+<div class="dashboard-primary-metrics">
 <div class="stat">
 <span>Advertências no período</span>
 <strong id="metricWarnings">0</strong>
@@ -92,9 +76,9 @@
 <strong id="metricApplicationTime">—</strong>
 </div>
 </div>
-<div class="card">
+<div class="card dashboard-time-card">
 <h3>Tempos de aplicação</h3>
-<div class="grid-3">
+<div class="dashboard-time-grid">
 <div class="stat">
 <span>Desde a ocorrência mais antiga</span>
 <strong id="metricOldest">—</strong>
@@ -106,6 +90,27 @@
 <div class="stat">
 <span>Média por ocorrência</span>
 <strong id="metricOccurrenceAverage">—</strong>
+</div>
+</div>
+</div>
+<div class="card dashboard-shift-absence-card">
+<h3>Faltas e atestados por turno</h3>
+<p class="muted dashboard-chart-note">Faltas: F e NS · Atestados: AM</p>
+<div class="chart-box chart-box-shift"><canvas id="shiftAbsenceChart"></canvas></div>
+</div>
+</div>
+<div class="dashboard-chart-right">
+<div class="card">
+<h3>ABS por operação</h3>
+<div class="chart-box chart-box-bar"><canvas id="absOperationChart"></canvas></div>
+</div>
+<div class="card">
+<h3>Medidas por região</h3>
+<div class="chart-box chart-box-bar"><canvas id="regionChart"></canvas></div>
+</div>
+<div class="card">
+<h3>Medidas por líder</h3>
+<div class="chart-box chart-box-bar"><canvas id="leaderChart"></canvas></div>
 </div>
 </div>
 </div>
