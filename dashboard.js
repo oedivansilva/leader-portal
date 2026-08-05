@@ -6,6 +6,56 @@ if (window.Chart) {
   Chart.defaults.borderColor = '#ECECF0'
 }
 
+  const dashboardValueLabelsPlugin = {
+    id: 'dashboardValueLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart
+      const chartType = chart.config.type
+      ctx.save()
+      ctx.font = "600 12px Poppins, 'Segoe UI', Arial, sans-serif"
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+
+      if (chartType === 'pie' || chartType === 'doughnut') {
+        const meta = chart.getDatasetMeta(0)
+        const values = chart.data.datasets?.[0]?.data || []
+        meta.data.forEach((arc, index) => {
+          const value = Number(values[index])
+          if (!Number.isFinite(value) || value <= 0) return
+          const pos = arc.tooltipPosition()
+          ctx.fillStyle = '#FFFFFF'
+          ctx.fillText(String(value), pos.x, pos.y)
+        })
+        ctx.restore()
+        return
+      }
+
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        const meta = chart.getDatasetMeta(datasetIndex)
+        if (meta.hidden) return
+        meta.data.forEach((element, index) => {
+          const rawValue = Array.isArray(dataset.data) ? dataset.data[index] : null
+          const value = Number(rawValue)
+          if (!Number.isFinite(value) || value <= 0) return
+          const props = element.getProps(['x', 'y', 'base', 'width', 'height'], true)
+          const horizontal = chart.options?.indexAxis === 'y'
+          ctx.fillStyle = '#1F2937'
+          if (horizontal) {
+            ctx.textAlign = 'left'
+            ctx.fillText(String(value), props.x + 8, props.y)
+          } else {
+            ctx.textAlign = 'center'
+            ctx.fillText(String(value), props.x, props.y - 10)
+          }
+        })
+      })
+      ctx.restore()
+    }
+  }
+
+  Chart.register(dashboardValueLabelsPlugin)
+
+
 const absCodes = ['AF', 'AL', 'AM', 'F', 'FJ', 'NS', 'justificada', 'injustificada']
 const justifiedCodes = ['AM', 'FJ', 'justificada']
 const unjustifiedCodes = ['F', 'NS', 'injustificada']
