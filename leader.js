@@ -1,4 +1,5 @@
-let ctx,reasons=[],selectedIncidentDates=[],leaderOperations=[],leaderEmployees=[],disciplinarySuggestionRows=[]
+let ctx,reasons=[],selectedIncidentDates=[],leaderOperations=[],leaderEmployees=[],disciplinarySuggestionRows=[],driveDocumentsEnabled=true
+function isMissingDocumentsTable(error){return error&&(error.code==='PGRST205'||/disciplinary_documents|schema cache|Could not find the table/i.test(error.message||''))}
 function toggleSuspensionFields(){const isSuspension=penaltyType.value==='Suspensão';suspensionField.classList.toggle('hidden',!isSuspension);suspensionStartDate.required=isSuspension;suspensionReturnDate.required=isSuspension;if(isSuspension)setSuggestedSuspensionDate()}
 function setSuggestedSuspensionDate(){if(!issueDate.value||suspensionStartDate.value)return;const date=new Date(`${issueDate.value}T12:00:00`);date.setDate(date.getDate()+1);suspensionStartDate.value=date.toISOString().slice(0,10);updateSuspensionReturnDate()}
 function updateSuspensionReturnDate(){if(!suspensionStartDate.value)return;const date=new Date(`${suspensionStartDate.value}T12:00:00`);date.setDate(date.getDate()+Number(suspensionDays.value||1));suspensionReturnDate.value=date.toISOString().slice(0,10)}
@@ -19,14 +20,18 @@ async function loadRequests(){
   if(error)return alert(error.message)
   const rows=data||[],requestIds=rows.map(row=>row.id)
   let signedByRequest={}
-  if(requestIds.length){
+  if(requestIds.length&&driveDocumentsEnabled){
     const documentResult=await db.from('disciplinary_documents').select('*').in('request_id',requestIds).eq('active',true).in('document_kind',['assinado','corrigido']).order('created_at',{ascending:false})
-    if(documentResult.error)return alert('Erro ao carregar documentos: '+documentResult.error.message+'\nExecute o arquivo ATIVAR_DOCUMENTOS_GOOGLE_DRIVE.sql no Supabase.')
-    for(const document of documentResult.data||[])if(!signedByRequest[document.request_id])signedByRequest[document.request_id]=document
+    if(documentResult.error){
+      driveDocumentsEnabled=false
+      if(!isMissingDocumentsTable(documentResult.error))console.warn('Documentos online indisponíveis:',documentResult.error)
+    }else{
+      for(const document of documentResult.data||[])if(!signedByRequest[document.request_id])signedByRequest[document.request_id]=document
+    }
   }
   leaderRequestRows.innerHTML=rows.map(r=>{
     const signed=signedByRequest[r.id]
-    const documentCell=signed?`<div class="document-cell"><span class="badge badge-green">Assinado disponível</span><div class="document-actions"><button class="btn btn-light btn-small" onclick="viewDisciplinaryDocument('${signed.id}')">Visualizar</button><button class="btn btn-primary btn-small" onclick="downloadDisciplinaryDocument('${signed.id}')">Baixar PDF</button></div><small class="muted">Disponível em ${new Date(signed.created_at).toLocaleString('pt-BR')}</small></div>`:'<span class="muted">Aguardando o Onsite anexar o documento assinado.</span>'
+    const documentCell=!driveDocumentsEnabled?'<span class="muted">Download pelo painel não ativado.</span>':signed?`<div class="document-cell"><span class="badge badge-green">Assinado disponível</span><div class="document-actions"><button class="btn btn-light btn-small" onclick="viewDisciplinaryDocument('${signed.id}')">Visualizar</button><button class="btn btn-primary btn-small" onclick="downloadDisciplinaryDocument('${signed.id}')">Baixar PDF</button></div><small class="muted">Disponível em ${new Date(signed.created_at).toLocaleString('pt-BR')}</small></div>`:'<span class="muted">Aguardando o Onsite anexar o documento assinado.</span>'
     return `<tr><td>${escapeHTML(r.employee_name)}<br><small class="muted">Solicitado por ${escapeHTML(ctx.profile.full_name)}</small></td><td>${escapeHTML(r.penalty_type)}</td><td>${escapeHTML(r.incident_date)}</td><td><span class="badge ${r.status==='aplicado'?'badge-green':r.assigned_onsite_id?'badge-blue':'badge-yellow'}">${escapeHTML(r.status)}</span></td><td>${new Date(r.created_at).toLocaleDateString('pt-BR')}</td><td>${documentCell}</td><td>${r.applied_date?new Date(`${r.applied_date}T00:00:00`).toLocaleDateString('pt-BR'):r.status==='gerado'?`<button class="btn btn-success" onclick="confirmApplication('${r.id}')">Confirmar aplicação</button>`:'Aguardando documento'}</td><td>${r.applied_date||r.status==='aplicado'?'<span class="badge badge-green">Bloqueada</span>':`<button class="btn btn-light btn-small" onclick="editLeaderRequest('${r.id}')">Editar</button>`}</td></tr>`
   }).join('')||'<tr><td colspan="8" class="empty">Nenhuma solicitação.</td></tr>'
 }

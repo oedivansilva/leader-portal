@@ -1,4 +1,5 @@
-let ctx,signature='',documentsByRequest={}
+let ctx,signature='',documentsByRequest={},driveDocumentsEnabled=true
+function isMissingDocumentsTable(error){return error&&(error.code==='PGRST205'||/disciplinary_documents|schema cache|Could not find the table/i.test(error.message||''))}
 
 
 function documentsForRequest(requestId){return documentsByRequest[requestId]||[]}
@@ -8,6 +9,10 @@ function documentActionButtons(document,label){
   return `<div class="document-actions"><button class="btn btn-light btn-small" onclick="viewDisciplinaryDocument('${document.id}')">Visualizar ${label}</button><button class="btn btn-light btn-small" onclick="downloadDisciplinaryDocument('${document.id}')">Baixar ${label}</button></div>`
 }
 function renderDocumentCell(request){
+  if(!driveDocumentsEnabled){
+    const label=['gerado','aplicado'].includes(request.status)?'Gerar PDF novamente':'Gerar PDF'
+    return `<button class="btn btn-success" onclick="prepareDocument('${request.id}',this)">${label}</button><small class="document-hint">O arquivo será baixado neste dispositivo.</small>`
+  }
   const original=activeDocument(request.id,['original'])
   const signed=activeDocument(request.id,['corrigido','assinado'])
   if(!original)return `<button class="btn btn-success" onclick="prepareDocument('${request.id}',this)">Gerar e salvar PDF</button><small class="document-hint">O arquivo será salvo automaticamente no Google Drive.</small>`
@@ -31,10 +36,14 @@ async function loadRequests(){
     if(!result.error)requesterNames=Object.fromEntries((result.data||[]).map(p=>[p.id,p.full_name]))
   }
   documentsByRequest={}
-  if(requestIds.length){
+  if(requestIds.length&&driveDocumentsEnabled){
     const documentResult=await db.from('disciplinary_documents').select('*').in('request_id',requestIds).eq('active',true).order('created_at',{ascending:false})
-    if(documentResult.error)return alert('Erro ao carregar documentos: '+documentResult.error.message+'\nExecute o arquivo ATIVAR_DOCUMENTOS_GOOGLE_DRIVE.sql no Supabase.')
-    for(const document of documentResult.data||[])(documentsByRequest[document.request_id]??=[]).push(document)
+    if(documentResult.error){
+      driveDocumentsEnabled=false
+      if(!isMissingDocumentsTable(documentResult.error))console.warn('Documentos online indisponíveis:',documentResult.error)
+    }else{
+      for(const document of documentResult.data||[])(documentsByRequest[document.request_id]??=[]).push(document)
+    }
   }
   onsiteRequestRows.innerHTML=rows.map(r=>{
     const original=activeDocument(r.id,['original'])
@@ -45,7 +54,7 @@ async function loadRequests(){
       <td>${escapeHTML(r.penalty_reasons?.title)}</td>
       <td><span class="badge ${r.status==='aplicado'?'badge-green':'badge-blue'}">${escapeHTML(r.status)}</span></td>
       <td>${renderDocumentCell(r)}</td>
-      <td>${r.applied_date?new Date(`${r.applied_date}T00:00:00`).toLocaleDateString('pt-BR'):original?`<button class="btn btn-primary" onclick="confirmOnsiteApplication('${r.id}')">Confirmar</button>`:'Aguardando documento original'}</td>
+      <td>${r.applied_date?new Date(`${r.applied_date}T00:00:00`).toLocaleDateString('pt-BR'):(!driveDocumentsEnabled?r.status==='gerado':Boolean(original))?`<button class="btn btn-primary" onclick="confirmOnsiteApplication('${r.id}')">Confirmar</button>`:driveDocumentsEnabled?'Aguardando documento original':'Aguardando geração do PDF'}</td>
       <td>${r.applied_date||r.status==='aplicado'?'<span class="badge badge-green">Bloqueada</span>':`<button class="btn btn-light btn-small" onclick="editOnsiteRequest('${r.id}')">Editar</button>`}</td>
     </tr>`
   }).join('')||'<tr><td colspan="8" class="empty">Nenhuma solicitação atribuída.</td></tr>'
@@ -74,7 +83,7 @@ async function fetchRequest(id){
 
 async function prepareDocument(id,button){
   if(!signature)return alert('Cadastre sua assinatura em Meu perfil antes de gerar o documento.')
-  const alreadyExists=Boolean(activeDocument(id,['original']))
+  const alreadyExists=driveDocumentsEnabled&&Boolean(activeDocument(id,['original']))
   if(alreadyExists&&!confirm('Já existe um documento original salvo. Deseja gerar e armazenar uma nova versão?'))return
   const originalText=button?.textContent
   if(button){button.disabled=true;button.textContent='Gerando...'}
@@ -87,9 +96,16 @@ async function prepareDocument(id,button){
       if(error||!privateData?.cpf)throw new Error('CPF não encontrado. Peça ao Admin para revisar o cadastro do colaborador.')
       request.employee_cpf=privateData.cpf
     }
-    const generated=await generateDisciplinaryPDF(request,signature,{download:false,kind:'ORIGINAL'})
-    const result=await uploadDisciplinaryDocument(request.id,'original',generated.blob,generated.fileName)
-    alert(`Documento salvo com sucesso.\n\n${result.folder_path}\n${result.file_name}`)
+    if(!driveDocumentsEnabled){
+      await generateDisciplinaryPDF(request,signature,{kind:'ORIGINAL'})
+      const {error}=await db.from('disciplinary_requests').update({status:'gerado'}).eq('id',request.id)
+      if(error)throw error
+      alert('PDF gerado e baixado com sucesso.')
+    }else{
+      const generated=await generateDisciplinaryPDF(request,signature,{download:false,kind:'ORIGINAL'})
+      const result=await uploadDisciplinaryDocument(request.id,'original',generated.blob,generated.fileName)
+      alert(`Documento salvo com sucesso.\n\n${result.folder_path}\n${result.file_name}`)
+    }
     await loadRequests()
   }catch(error){alert(error.message)}
   finally{if(button){button.disabled=false;button.textContent=originalText}}
