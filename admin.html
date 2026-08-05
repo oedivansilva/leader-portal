@@ -35,15 +35,15 @@
 <div class="app">
 <aside class="sidebar">
 <div class="nav-title">Administração</div>
-<button class="nav-btn active" onclick="showPage('overview',this)">Visão geral</button>
-<button class="nav-btn" onclick="showPage('requests',this)">Solicitações</button>
-<button class="nav-btn" onclick="showPage('users',this)">Usuários</button>
-<button class="nav-btn" onclick="showPage('structure',this)">Estrutura</button>
-<button class="nav-btn" onclick="showPage('employees',this)">Colaboradores</button>
-<button class="nav-btn" onclick="showPage('management',this)">Escalas e benefícios</button>
-<button class="nav-btn" onclick="showPage('presenceAdmin',this)">Controle de Presença</button>
-<button class="nav-btn" onclick="showPage('turnoverAdmin',this)">Turnover</button>
-<button class="nav-btn" onclick="showPage('audit',this)">Auditoria</button>
+<button class="nav-btn active" data-module="overview" onclick="showPage('overview',this)">Visão geral</button>
+<button class="nav-btn" data-module="employees" onclick="showPage('employees',this)">Colaboradores</button>
+<button class="nav-btn" data-module="requests" onclick="showPage('requests',this)">Solicitações</button>
+<button class="nav-btn" data-module="presence" onclick="showPage('presenceAdmin',this)">Controle de Presença</button>
+<button class="nav-btn" data-module="turnover" onclick="showPage('turnoverAdmin',this)">Turnover</button>
+<button class="nav-btn" data-module="management" onclick="showPage('management',this)">Escalas e benefícios</button>
+<button class="nav-btn" data-module="structure" onclick="showPage('structure',this)">Estrutura</button>
+<button class="nav-btn" data-module="users" onclick="showPage('users',this)">Usuários</button>
+<button class="nav-btn" data-module="audit" onclick="showPage('audit',this)">Auditoria</button>
 </aside>
 <main class="main">
   <section id="overview" class="page active">
@@ -193,6 +193,11 @@
 </select>
 <small class="muted">Use Ctrl para selecionar mais de uma.</small>
 </div>
+<div class="field module-permissions-field" style="grid-column:1/-1">
+<label>Módulos disponíveis na barra lateral</label>
+<small class="muted">Marque exatamente o que este usuário poderá acessar. “Meu perfil” fica sempre disponível.</small>
+<div id="userPermissions" class="module-permissions-grid"></div>
+</div>
 <button id="createUserBtn" class="btn btn-success" style="grid-column:1/-1">Criar usuário</button>
 </form>
 <div id="credentialsBox" class="notice hidden" style="margin-top:15px">
@@ -248,6 +253,11 @@
 <select id="editOnsiteOperations" class="input" multiple size="7">
 </select>
 </div>
+<div class="field module-permissions-field" style="grid-column:1/-1">
+<label>Módulos disponíveis na barra lateral</label>
+<small class="muted">As alterações entram em vigor no próximo acesso ou ao recarregar a página.</small>
+<div id="editUserPermissions" class="module-permissions-grid"></div>
+</div>
 <button class="btn btn-success" style="grid-column:1/-1">Salvar alterações</button>
 </form>
 </div>
@@ -269,6 +279,7 @@
 <th>Perfil</th>
 <th>E-mail</th>
 <th>Operação/Turno</th>
+<th>Acessos</th>
 <th>Status</th>
 <th>Ações</th>
 </tr>
