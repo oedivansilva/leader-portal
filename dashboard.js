@@ -9,11 +9,10 @@ if (window.Chart) {
   const dashboardValueLabelsPlugin = {
     id: 'dashboardValueLabels',
     afterDatasetsDraw(chart) {
-      const { ctx } = chart
+      const { ctx, chartArea } = chart
       const chartType = chart.config.type
       ctx.save()
       ctx.font = "600 12px Poppins, 'Segoe UI', Arial, sans-serif"
-      ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
 
       if (chartType === 'pie' || chartType === 'doughnut') {
@@ -23,6 +22,7 @@ if (window.Chart) {
           const value = Number(values[index])
           if (!Number.isFinite(value) || value <= 0) return
           const pos = arc.tooltipPosition()
+          ctx.textAlign = 'center'
           ctx.fillStyle = '#FFFFFF'
           ctx.fillText(String(value), pos.x, pos.y)
         })
@@ -33,20 +33,45 @@ if (window.Chart) {
       chart.data.datasets.forEach((dataset, datasetIndex) => {
         const meta = chart.getDatasetMeta(datasetIndex)
         if (meta.hidden) return
+
         meta.data.forEach((element, index) => {
           const rawValue = Array.isArray(dataset.data) ? dataset.data[index] : null
           const value = Number(rawValue)
           if (!Number.isFinite(value) || value <= 0) return
-          const props = element.getProps(['x', 'y', 'base', 'width', 'height'], true)
+
+          const props = element.getProps(['x', 'y', 'base'], true)
           const horizontal = chart.options?.indexAxis === 'y'
+          const label = String(value)
+          const textWidth = ctx.measureText(label).width
           ctx.fillStyle = '#1F2937'
+
           if (horizontal) {
+            let x = props.x + 8
+            let y = props.y
             ctx.textAlign = 'left'
-            ctx.fillText(String(value), props.x + 8, props.y)
-          } else {
-            ctx.textAlign = 'center'
-            ctx.fillText(String(value), props.x, props.y - 10)
+
+            if (x + textWidth > chartArea.right - 6) {
+              x = props.x - 8
+              ctx.textAlign = 'right'
+              ctx.fillStyle = '#FFFFFF'
+            }
+
+            x = Math.max(chartArea.left + 6, Math.min(x, chartArea.right - 6))
+            ctx.fillText(label, x, y)
+            return
           }
+
+          let x = props.x
+          let y = props.y - 10
+          ctx.textAlign = 'center'
+
+          if (y < chartArea.top + 8) {
+            y = props.y + 12
+            ctx.fillStyle = '#FFFFFF'
+          }
+
+          y = Math.max(chartArea.top + 8, Math.min(y, chartArea.bottom - 8))
+          ctx.fillText(label, x, y)
         })
       })
       ctx.restore()
