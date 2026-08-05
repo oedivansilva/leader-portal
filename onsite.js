@@ -137,8 +137,10 @@ function uploadSignedDocument(requestId,button){
 }
 
 getSessionContext('onsite').then(x=>{
-  if(x){
-    ctx=x;signature=x.profile.signature_url||''
+  if(x&&requireModuleAccess(x.profile,'requests')){
+    ctx=x
+    signature=x.profile.signature_url||''
+    renderPortalSidebar(portalSidebar,x.profile,'requests')
     loadRequests()
   }
 })

@@ -5,6 +5,65 @@ window.escapeHTML = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':
 window.formatDate = value => value ? value.split('-').reverse().join('/') : '-'
 window.roleLabel = role => ({admin:'Administrador',leader:'Líder / Gestor',onsite:'Equipe Onsite'}[role] || role)
 
+window.NEXO_MODULES = [
+  { key: 'overview', label: 'Visão geral' },
+  { key: 'employees', label: 'Colaboradores' },
+  { key: 'requests', label: 'Solicitações' },
+  { key: 'presence', label: 'Controle de Presença' },
+  { key: 'turnover', label: 'Turnover' },
+  { key: 'management', label: 'Escalas e benefícios' },
+  { key: 'structure', label: 'Estrutura' },
+  { key: 'users', label: 'Usuários' },
+  { key: 'audit', label: 'Auditoria' }
+]
+
+window.defaultMenuPermissions = function(role){
+  if(role === 'admin') return NEXO_MODULES.map(module => module.key)
+  if(role === 'leader') return ['requests','presence']
+  if(role === 'onsite') return ['requests']
+  return []
+}
+
+window.profileMenuPermissions = function(profile){
+  if(profile?.role === 'admin') return defaultMenuPermissions('admin')
+  return Array.isArray(profile?.menu_permissions) ? profile.menu_permissions : defaultMenuPermissions(profile?.role)
+}
+
+window.hasModuleAccess = function(profile,moduleKey){
+  return profile?.role === 'admin' || profileMenuPermissions(profile).includes(moduleKey)
+}
+
+window.moduleUrlForProfile = function(profile,moduleKey){
+  if(profile?.role === 'admin') return `admin.html?module=${encodeURIComponent(moduleKey)}`
+  if(moduleKey === 'requests') return profile?.role === 'leader' ? 'leader.html' : 'onsite.html'
+  if(moduleKey === 'presence' && profile?.role === 'leader') return 'presence.html'
+  return `workspace.html?module=${encodeURIComponent(moduleKey)}`
+}
+
+window.firstAllowedModuleUrl = function(profile){
+  if(profile?.role === 'admin') return 'admin.html'
+  const first = NEXO_MODULES.find(module => hasModuleAccess(profile,module.key))
+  return first ? moduleUrlForProfile(profile,first.key) : 'profile.html'
+}
+
+window.renderPortalSidebar = function(sidebar,profile,currentModule=''){
+  if(!sidebar || !profile) return
+  const title = profile.role === 'admin' ? 'Administração' : profile.role === 'leader' ? 'Liderança' : 'Equipe Onsite'
+  const permissions = profileMenuPermissions(profile)
+  const links = NEXO_MODULES
+    .filter(module => profile.role === 'admin' || permissions.includes(module.key))
+    .map(module => `<a class="nav-btn ${currentModule===module.key?'active':''}" href="${moduleUrlForProfile(profile,module.key)}">${escapeHTML(module.label)}</a>`)
+    .join('')
+  sidebar.innerHTML = `<div class="nav-title">${title}</div>${links}<a class="nav-btn ${currentModule==='profile'?'active':''}" href="profile.html">Meu perfil</a>`
+}
+
+window.requireModuleAccess = function(profile,moduleKey){
+  if(hasModuleAccess(profile,moduleKey)) return true
+  location.replace(firstAllowedModuleUrl(profile))
+  return false
+}
+
+
 window.getSessionContext = async function(requiredRole) {
   const { data: { user } } = await db.auth.getUser()
   if (!user) { location.replace('index.html'); return null }
@@ -12,7 +71,7 @@ window.getSessionContext = async function(requiredRole) {
   if (error || !profile || !profile.active) { await db.auth.signOut(); location.replace('index.html'); return null }
   if (profile.must_change_password) { location.replace('index.html?change-password=1'); return null }
   if (requiredRole && profile.role !== requiredRole) {
-    location.replace(({admin:'admin.html',leader:'leader.html',onsite:'onsite.html'})[profile.role] || 'index.html'); return null
+    location.replace(firstAllowedModuleUrl(profile)); return null
   }
   document.querySelectorAll('[data-user-name]').forEach(el => el.textContent = profile.full_name || user.email.split('@')[0])
   document.querySelectorAll('[data-user-role]').forEach(el => el.textContent = roleLabel(profile.role))

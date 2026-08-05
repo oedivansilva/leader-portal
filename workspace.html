@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#EE4D2D">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<title>NEXO — Módulos</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="mobile-menu" onclick="toggleSidebar()">☰</button>
+    <div class="brand" aria-label="NEXO — Gestão de Pessoas e Operações">
+      <span class="brand-mark" aria-hidden="true">N</span>
+      <span class="brand-copy"><strong>NEXO</strong><small>Gestão de Pessoas e Operações</small></span>
+    </div>
+  </div>
+  <div class="userbox">
+    <div><strong data-user-name></strong><small data-user-role></small></div>
+    <button class="btn btn-danger" onclick="logout()">Sair</button>
+  </div>
+</header>
+<div class="app">
+<aside id="portalSidebar" class="sidebar"></aside>
+<main class="main">
+  <div class="notice workspace-readonly-note"><strong>Acesso de consulta:</strong> os módulos abaixo respeitam as operações vinculadas ao seu usuário. Alterações administrativas continuam restritas ao Administrador.</div>
+
+  <section id="overview" class="workspace-section">
+    <div class="page-head"><div><h1>Visão geral</h1><p class="muted">Indicadores disciplinares e operacionais das suas operações.</p></div></div>
+    <div class="toolbar" style="margin-top:18px">
+      <input id="dashboardMonth" type="month" class="input" style="max-width:210px">
+      <select id="dashboardOperation" class="input" style="max-width:320px"><option value="">Todas as operações</option></select>
+      <button class="btn btn-primary" onclick="loadDashboard()">Atualizar</button>
+    </div>
+    <div class="grid-3"><div class="stat"><span>ABS total</span><strong id="metricAbs">—</strong></div><div class="stat"><span>Faltas justificadas</span><strong id="metricJustified">0</strong></div><div class="stat"><span>Faltas injustificadas</span><strong id="metricUnjustified">0</strong></div></div>
+    <div class="dashboard-chart-layout">
+      <div class="dashboard-chart-left">
+        <div class="card dashboard-pie-card"><h3>Status das solicitações</h3><div class="chart-box chart-box-pie"><canvas id="statusChart"></canvas></div></div>
+        <div class="dashboard-primary-metrics">
+          <div class="stat"><span>Advertências no período</span><strong id="metricWarnings">0</strong></div>
+          <div class="stat"><span>Suspensões no período</span><strong id="metricSuspensions">0</strong></div>
+          <div class="stat"><span>Tempo médio desde a 1ª ocorrência</span><strong id="metricApplicationTime">—</strong></div>
+        </div>
+        <div class="card dashboard-time-card"><h3>Tempos de aplicação</h3><div class="dashboard-time-grid">
+          <div class="stat"><span>Desde a ocorrência mais antiga</span><strong id="metricOldest">—</strong></div>
+          <div class="stat"><span>Desde a ocorrência mais recente</span><strong id="metricNewest">—</strong></div>
+          <div class="stat"><span>Média por ocorrência</span><strong id="metricOccurrenceAverage">—</strong></div>
+        </div></div>
+        <div class="card dashboard-shift-absence-card"><h3>Faltas e atestados por turno</h3><p class="muted dashboard-chart-note">Faltas: F e NS · Atestados: AM</p><div class="chart-box chart-box-shift"><canvas id="shiftAbsenceChart"></canvas></div></div>
+      </div>
+      <div class="dashboard-chart-right">
+        <div class="card"><h3>ABS por operação</h3><div class="chart-box chart-box-bar"><canvas id="absOperationChart"></canvas></div></div>
+        <div class="card"><h3>Medidas por região</h3><div class="chart-box chart-box-bar"><canvas id="regionChart"></canvas></div></div>
+        <div class="card"><h3>Medidas por líder</h3><div class="chart-box chart-box-bar"><canvas id="leaderChart"></canvas></div></div>
+      </div>
+    </div>
+    <div class="card"><h3>Turnover</h3><div class="grid-3">
+      <div class="stat"><span>Quadro ativo no fim do período</span><strong id="metricActiveHeadcount">0</strong></div>
+      <div class="stat"><span>Admissões no período</span><strong id="metricAdmissions">0</strong></div>
+      <div class="stat"><span>Desligamentos no período</span><strong id="metricTerminations">0</strong></div>
+      <div class="stat"><span>Turnover geral</span><strong id="metricGeneralTurnover">—</strong></div>
+      <div class="stat"><span>Turnover de desligamentos</span><strong id="metricTurnover">—</strong></div>
+      <div class="stat"><span>Desligamentos voluntários</span><strong id="metricVoluntary">0</strong></div>
+      <div class="stat"><span>Desligamentos involuntários</span><strong id="metricInvoluntary">0</strong></div>
+    </div><div class="chart-box chart-box-turnover"><canvas id="turnoverChart"></canvas></div><div class="table-wrap" style="margin-top:18px"><h4>Colaboradores considerados no período</h4><table class="table"><thead><tr><th>Movimentação</th><th>MAT</th><th>Colaborador</th><th>Data</th></tr></thead><tbody id="turnoverMovementRows"></tbody></table></div></div>
+  </section>
+
+  <section id="employees" class="workspace-section">
+    <div class="page-head"><div><h1>Colaboradores</h1><p class="muted">Consulta dos colaboradores vinculados às suas operações.</p></div></div>
+    <div class="card"><div class="toolbar"><input id="workspaceEmployeeSearch" class="input" placeholder="Buscar por MAT ou nome" style="max-width:420px"></div><div class="table-wrap"><table class="table"><thead><tr><th>MAT</th><th>Colaborador</th><th>Operação</th><th>Status</th><th>Admissão</th><th>Desligamento</th></tr></thead><tbody id="workspaceEmployeeRows"></tbody></table></div></div>
+  </section>
+
+  <section id="presence" class="workspace-section">
+    <div class="page-head"><div><h1>Controle de Presença</h1><p class="muted">Consulta das ocorrências registradas nas suas operações.</p></div></div>
+    <div class="card table-wrap"><table class="table"><thead><tr><th>Data</th><th>MAT</th><th>Colaborador</th><th>Operação</th><th>Líder</th><th>Tipo</th><th>Observação</th></tr></thead><tbody id="workspacePresenceRows"></tbody></table></div>
+  </section>
+
+  <section id="turnover" class="workspace-section">
+    <div class="page-head"><div><h1>Turnover</h1><p class="muted">Admissões e desligamentos das suas operações.</p></div></div>
+    <div class="card table-wrap"><table class="table"><thead><tr><th>MAT</th><th>Colaborador</th><th>Operação</th><th>Admissão</th><th>Demissão</th><th>Tipo</th><th>Motivo</th><th>Recontratação</th></tr></thead><tbody id="workspaceTurnoverRows"></tbody></table></div>
+  </section>
+
+  <section id="management" class="workspace-section">
+    <div class="page-head"><div><h1>Escalas e benefícios</h1><p class="muted">Consulta das escalas e benefícios cadastrados.</p></div></div>
+    <div class="grid-2">
+      <div class="card table-wrap"><h3>Escalas</h3><table class="table"><thead><tr><th>Nome</th><th>Dias trabalhados</th><th>Descrição</th><th>Status</th></tr></thead><tbody id="workspaceScaleRows"></tbody></table></div>
+      <div class="card table-wrap"><h3>Benefícios</h3><table class="table"><thead><tr><th>Benefício</th><th>Status</th></tr></thead><tbody id="workspaceBenefitRows"></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="structure" class="workspace-section">
+    <div class="page-head"><div><h1>Estrutura</h1><p class="muted">Operações vinculadas ao seu acesso.</p></div></div>
+    <div class="card table-wrap"><table class="table"><thead><tr><th>Cliente</th><th>Centro de custo</th><th>Departamento</th><th>Cidade/UF</th><th>Status</th></tr></thead><tbody id="workspaceStructureRows"></tbody></table></div>
+  </section>
+
+  <section id="users" class="workspace-section">
+    <div class="page-head"><div><h1>Usuários</h1><p class="muted">Consulta dos usuários que compartilham operações com você.</p></div></div>
+    <div class="card table-wrap"><table class="table"><thead><tr><th>Nome</th><th>Perfil</th><th>E-mail</th><th>Celular</th><th>Operações</th><th>Status</th></tr></thead><tbody id="workspaceUserRows"></tbody></table></div>
+  </section>
+
+  <section id="audit" class="workspace-section">
+    <div class="page-head"><div><h1>Auditoria</h1><p class="muted">Histórico de ações permitido pelas suas operações.</p></div></div>
+    <div class="card table-wrap"><table class="table"><thead><tr><th>Data e hora</th><th>Usuário</th><th>Ação</th><th>Tipo</th><th>Detalhe</th></tr></thead><tbody id="workspaceAuditRows"></tbody></table></div>
+  </section>
+</main>
+</div>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script src="dashboard.js"></script>
+<script src="workspace.js"></script>
+</body>
+</html>

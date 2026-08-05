@@ -143,6 +143,14 @@ async function loadDashboard() {
   let absences = (absencesResult.data || []).filter(item => absCodes.includes(item.absence_type))
   const scales = scalesResult.data || []
 
+  const allowedOperationIds = Array.isArray(window.dashboardAllowedOperationIds) ? window.dashboardAllowedOperationIds : null
+  if (allowedOperationIds) {
+    rows = rows.filter(item => allowedOperationIds.includes(item.operation_id))
+    requests = requests.filter(item => allowedOperationIds.includes(item.operation_id))
+    employees = employees.filter(item => allowedOperationIds.includes(item.operation_id))
+    absences = absences.filter(item => allowedOperationIds.includes(item.operation_id))
+  }
+
   if (operation) {
     rows = rows.filter(item => item.operation_id === operation)
     requests = requests.filter(item => item.operation_id === operation)

@@ -1,6 +1,6 @@
 let profileContext
 
-function backToPortal(){location.href=({admin:'admin.html',leader:'leader.html',onsite:'onsite.html'})[profileContext.profile.role]||'index.html'}
+function backToPortal(){location.href=firstAllowedModuleUrl(profileContext.profile)}
 
 profileForm.addEventListener('submit',async event=>{
   event.preventDefault()
@@ -59,11 +59,7 @@ getSessionContext().then(context=>{
   if(!context)return
   profileContext=context
   const role=context.profile.role
-  profileSidebar.innerHTML=role==='leader'
-    ?'<div class="nav-title">Liderança</div><a class="nav-btn" href="leader.html">Solicitações disciplinares</a><a class="nav-btn" href="presence.html">Controle de Presença</a><a class="nav-btn active" href="profile.html">Meu perfil</a>'
-    :role==='onsite'
-      ?'<div class="nav-title">Equipe Onsite</div><a class="nav-btn" href="onsite.html">Solicitações atribuídas</a><a class="nav-btn active" href="profile.html">Meu perfil</a>'
-      :'<div class="nav-title">Administração</div><a class="nav-btn" href="admin.html">Voltar ao painel</a><a class="nav-btn active" href="profile.html">Meu perfil</a>'
+  renderPortalSidebar(profileSidebar,context.profile,'profile')
   profileName.value=context.profile.full_name||''
   profileEmail.value=context.profile.email||context.user.email||''
   profilePhone.value=context.profile.phone||''
