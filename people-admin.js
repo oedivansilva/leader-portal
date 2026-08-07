@@ -137,6 +137,63 @@ async function loadClimateAnalytics() {
 }
 window.loadClimateAnalytics = loadClimateAnalytics
 
+
+window.viewClimateTextResponses = async function(surveyId, questionId) {
+  try {
+    const survey = climateSurveys.find(item => item.id === surveyId)
+    const question = (await db.from('people_climate_questions')
+      .select('question_text')
+      .eq('id', questionId)
+      .eq('survey_id', surveyId)
+      .single())
+
+    if (question.error) throw question.error
+
+    const { data: responses, error } = await db
+      .from('people_climate_responses')
+      .select('id,text_value,submitted_at,employee_id,anonymous_response_key,employees(full_name,registration)')
+      .eq('survey_id', surveyId)
+      .eq('question_id', questionId)
+      .not('text_value', 'is', null)
+      .order('submitted_at', { ascending: true })
+
+    if (error) throw error
+
+    const rows = (responses || []).filter(item => String(item.text_value || '').trim())
+    if (!rows.length) {
+      return openPeopleModal(
+        question.data?.question_text || 'Respostas abertas',
+        survey?.anonymous ? 'Pesquisa anônima' : 'Pesquisa identificada',
+        '<div class="people-empty">Nenhuma resposta de texto foi registrada para esta pergunta.</div>'
+      )
+    }
+
+    const html = `<div style="display:grid;gap:12px">${rows.map((item, index) => {
+      let respondent = `Resposta #${index + 1}`
+      if (survey?.anonymous) {
+        respondent = `Resposta anônima #${index + 1}`
+      } else if (item.employees?.full_name) {
+        respondent = `${escapeHTML(item.employees.full_name)}${item.employees.registration ? ` · ${escapeHTML(item.employees.registration)}` : ''}`
+      }
+      return `<div class="people-card" style="padding:16px">
+        <div class="page-head" style="margin-bottom:8px">
+          <strong>${respondent}</strong>
+          <span class="muted">${item.submitted_at ? new Date(item.submitted_at).toLocaleString('pt-BR') : ''}</span>
+        </div>
+        <div style="white-space:pre-wrap;line-height:1.55">${escapeHTML(item.text_value)}</div>
+      </div>`
+    }).join('')}</div>`
+
+    openPeopleModal(
+      question.data?.question_text || 'Respostas abertas',
+      `${rows.length} resposta${rows.length === 1 ? '' : 's'} · ${survey?.anonymous ? 'Pesquisa anônima' : 'Pesquisa identificada'}`,
+      html
+    )
+  } catch (error) {
+    alert(`Não foi possível carregar as respostas: ${error.message || error}`)
+  }
+}
+
 competencyForm.addEventListener('submit',async event=>{event.preventDefault();const {error}=await db.from('people_performance_competencies').insert({name:competencyName.value.trim(),category:competencyCategory.value.trim(),description:competencyDescription.value.trim()||null});if(error)return alert(error.message);event.target.reset();competencyCategory.value='Comportamental';await loadPeopleBase();alert('Competência cadastrada.')})
 cycleForm.addEventListener('submit',async event=>{event.preventDefault();const ids=[...cycleCompetencies.querySelectorAll('input:checked')].map(i=>i.value);if(!ids.length)return alert('Selecione ao menos uma competência.');const {data:cycle,error}=await db.from('people_performance_cycles').insert({title:cycleTitle.value.trim(),description:cycleDescription.value.trim()||null,start_date:cycleStart.value,end_date:cycleEnd.value,status:'draft',created_by:peopleAdminCtx.profile.id}).select().single();if(error)return alert(error.message);const linked=await db.from('people_performance_cycle_competencies').insert(ids.map(competency_id=>({cycle_id:cycle.id,competency_id,weight:1})));if(linked.error)return alert(linked.error.message);event.target.reset();await loadPeopleBase();performanceCycleSelect.value=cycle.id;alert('Ciclo criado. Agora clique em “Iniciar ciclo”.')})
 
