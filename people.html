@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#EE4D2D">
+<link rel="icon" type="image/svg+xml" href="favicon.svg"><title>NEXO — Meu espaço</title>
+<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="people.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<header class="topbar"><div style="display:flex;align-items:center;gap:12px"><button class="mobile-menu" onclick="toggleSidebar()">☰</button><div class="brand"><span class="brand-mark">N</span><span class="brand-copy"><strong>NEXO</strong><small>Gestão de Pessoas e Operações</small></span></div></div><div class="userbox"><div><strong data-user-name></strong><small data-user-role></small></div><button class="btn btn-danger" onclick="logout()">Sair</button></div></header>
+<div class="app"><aside id="portalSidebar" class="sidebar"></aside><main class="main"><div class="people-shell">
+<div class="people-hero"><h1 id="peopleWelcome">Meu NEXO</h1><p id="peopleSubtitle">Seu espaço de clima, desenvolvimento e experiência.</p></div>
+
+<section id="mood" class="people-section">
+  <div class="people-grid"><div class="people-card span-8"><h2>Como você está se sentindo hoje?</h2><p class="muted">É um check-in rápido. A liderança visualiza apenas dados agregados.</p>
+    <div id="moodPicker" class="mood-picker">
+      <button class="mood-option" data-mood="1"><span class="emoji">😞</span>Muito mal</button>
+      <button class="mood-option" data-mood="2"><span class="emoji">😕</span>Mal</button>
+      <button class="mood-option" data-mood="3"><span class="emoji">😐</span>Neutro</button>
+      <button class="mood-option" data-mood="4"><span class="emoji">🙂</span>Bem</button>
+      <button class="mood-option" data-mood="5"><span class="emoji">😄</span>Muito bem</button>
+    </div>
+    <div class="field"><label>Quer deixar um comentário? <span class="muted">(opcional)</span></label><textarea id="moodNote" class="input" rows="3" placeholder="Escreva somente se quiser..."></textarea></div>
+    <label style="display:flex;gap:8px;align-items:flex-start;margin:12px 0"><input id="moodContact" type="checkbox"> <span>Quero conversar com o RH sobre como estou me sentindo.</span></label>
+    <button id="saveMoodBtn" class="btn btn-primary" type="button">Salvar meu check-in</button>
+  </div><div class="people-card span-4"><h3>Seu check-in de hoje</h3><div id="todayMoodState" class="people-empty">Ainda não respondido.</div></div></div>
+</section>
+
+<section id="climate" class="people-section"><div class="people-card"><div class="page-head"><div><h2>Pesquisas de Clima</h2><p class="muted">Pesquisas disponíveis para você.</p></div></div><div id="climateSurveyList"></div></div></section>
+
+<section id="performance" class="people-section"><div class="people-card"><div class="page-head"><div><h2>Minha Avaliação de Desempenho</h2><p class="muted">Autoavaliações e resultados dos ciclos.</p></div></div><div id="performanceList"></div></div></section>
+
+<section id="pdi" class="people-section"><div class="people-card"><div class="page-head"><div><h2>Meu desenvolvimento</h2><p class="muted">Planos de desenvolvimento e ações combinadas.</p></div></div><div id="pdiList"></div></div></section>
+</div></main></div>
+
+<div id="peopleModal" class="people-modal hidden"><div class="people-modal-card"><div class="people-modal-head"><div><h2 id="peopleModalTitle"></h2><p id="peopleModalSubtitle" class="muted"></p></div><button class="btn btn-light" onclick="closePeopleModal()">Fechar</button></div><div id="peopleModalBody"></div></div></div>
+<script src="config.js"></script><script src="common.js"></script><script src="people.js"></script>
+</body></html>

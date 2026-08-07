@@ -3,24 +3,30 @@ window.db = supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey)
 
 window.escapeHTML = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))
 window.formatDate = value => value ? value.split('-').reverse().join('/') : '-'
-window.roleLabel = role => ({admin:'Administrador',leader:'Líder / Gestor',onsite:'Equipe Onsite'}[role] || role)
+window.roleLabel = role => ({admin:'Administrador',leader:'Líder / Gestor',onsite:'Equipe Onsite',employee:'Colaborador'}[role] || role)
 
 window.NEXO_MODULES = [
-  { key: 'overview', label: 'Visão geral' },
-  { key: 'employees', label: 'Colaboradores' },
-  { key: 'requests', label: 'Solicitações' },
-  { key: 'presence', label: 'Controle de Presença' },
-  { key: 'turnover', label: 'Turnover' },
-  { key: 'management', label: 'Escalas e benefícios' },
-  { key: 'structure', label: 'Estrutura' },
-  { key: 'users', label: 'Usuários' },
-  { key: 'audit', label: 'Auditoria' }
+  { key: 'overview', label: 'Visão geral', group: 'GESTÃO OPERACIONAL' },
+  { key: 'employees', label: 'Colaboradores', group: 'GESTÃO OPERACIONAL' },
+  { key: 'requests', label: 'Solicitações', group: 'GESTÃO OPERACIONAL' },
+  { key: 'presence', label: 'Controle de Presença', group: 'GESTÃO OPERACIONAL' },
+  { key: 'turnover', label: 'Turnover', group: 'GESTÃO OPERACIONAL' },
+  { key: 'management', label: 'Escalas e benefícios', group: 'GESTÃO OPERACIONAL' },
+  { key: 'mood', label: 'Humor', group: 'PESSOAS & DESENVOLVIMENTO' },
+  { key: 'climate', label: 'Pesquisa de Clima', group: 'PESSOAS & DESENVOLVIMENTO' },
+  { key: 'performance', label: 'Avaliação de Desempenho', group: 'PESSOAS & DESENVOLVIMENTO' },
+  { key: 'pdi', label: 'PDI', group: 'PESSOAS & DESENVOLVIMENTO' },
+  { key: 'people_analytics', label: 'People Analytics', group: 'PESSOAS & DESENVOLVIMENTO' },
+  { key: 'structure', label: 'Estrutura', group: 'ADMINISTRAÇÃO' },
+  { key: 'users', label: 'Usuários', group: 'ADMINISTRAÇÃO' },
+  { key: 'audit', label: 'Auditoria', group: 'ADMINISTRAÇÃO' }
 ]
 
 window.defaultMenuPermissions = function(role){
   if(role === 'admin') return NEXO_MODULES.map(module => module.key)
   if(role === 'leader') return ['requests','presence']
   if(role === 'onsite') return ['requests']
+  if(role === 'employee') return ['mood','climate','performance','pdi']
   return []
 }
 
@@ -34,6 +40,13 @@ window.hasModuleAccess = function(profile,moduleKey){
 }
 
 window.moduleUrlForProfile = function(profile,moduleKey){
+  const peopleModules = ['mood','climate','performance','pdi','people_analytics']
+  if(peopleModules.includes(moduleKey)) {
+    return profile?.role === 'employee'
+      ? `people.html?module=${encodeURIComponent(moduleKey)}`
+      : `people-admin.html?module=${encodeURIComponent(moduleKey)}`
+  }
+  if(profile?.role === 'employee') return `people.html?module=mood`
   if(profile?.role === 'admin') return `admin.html?module=${encodeURIComponent(moduleKey)}`
   if(moduleKey === 'requests') return profile?.role === 'leader' ? 'leader.html' : 'onsite.html'
   if(moduleKey === 'presence' && profile?.role === 'leader') return 'presence.html'
@@ -42,19 +55,23 @@ window.moduleUrlForProfile = function(profile,moduleKey){
 
 window.firstAllowedModuleUrl = function(profile){
   if(profile?.role === 'admin') return 'admin.html'
+  if(profile?.role === 'employee') return 'people.html?module=mood'
   const first = NEXO_MODULES.find(module => hasModuleAccess(profile,module.key))
   return first ? moduleUrlForProfile(profile,first.key) : 'profile.html'
 }
 
 window.renderPortalSidebar = function(sidebar,profile,currentModule=''){
   if(!sidebar || !profile) return
-  const title = profile.role === 'admin' ? 'Administração' : profile.role === 'leader' ? 'Liderança' : 'Equipe Onsite'
+  const title = profile.role === 'admin' ? 'NEXO' : profile.role === 'leader' ? 'Liderança' : profile.role === 'onsite' ? 'Equipe Onsite' : 'Meu NEXO'
   const permissions = profileMenuPermissions(profile)
-  const links = NEXO_MODULES
-    .filter(module => profile.role === 'admin' || permissions.includes(module.key))
-    .map(module => `<a class="nav-btn ${currentModule===module.key?'active':''}" href="${moduleUrlForProfile(profile,module.key)}">${escapeHTML(module.label)}</a>`)
-    .join('')
-  sidebar.innerHTML = `<div class="nav-title">${title}</div>${links}<a class="nav-btn ${currentModule==='profile'?'active':''}" href="profile.html">Meu perfil</a>`
+  const visible = NEXO_MODULES.filter(module => profile.role === 'admin' || permissions.includes(module.key))
+  let currentGroup = null
+  const links = visible.map(module => {
+    const group = module.group !== currentGroup ? `<div class="nav-title">${escapeHTML(module.group)}</div>` : ''
+    currentGroup = module.group
+    return `${group}<a class="nav-btn ${currentModule===module.key?'active':''}" href="${moduleUrlForProfile(profile,module.key)}">${escapeHTML(module.label)}</a>`
+  }).join('')
+  sidebar.innerHTML = `<div class="nav-title">${title}</div>${links}<div class="nav-title">CONTA</div><a class="nav-btn ${currentModule==='profile'?'active':''}" href="profile.html">Meu perfil</a>`
 }
 
 window.requireModuleAccess = function(profile,moduleKey){

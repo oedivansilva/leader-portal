@@ -81,7 +81,7 @@ function openRequestedAdminModule() {
 }
 
 function renderStats() {
-  statUsers.textContent = profiles.filter(item => item.active).length
+  statUsers.textContent = profiles.filter(item => item.active && item.role !== 'employee').length
   statPending.textContent = requests.filter(item => !item.applied_date && !['cancelado', 'concluido'].includes(item.status)).length
   statOperations.textContent = operations.filter(item => item.active).length
 }
@@ -106,6 +106,7 @@ function renderUsers() {
   const query = userSearch.value.toLowerCase()
   const role = userRoleFilter.value
   const rows = profiles
+    .filter(profile => profile.role !== 'employee')
     .filter(profile => (!role || profile.role === role) && (`${profile.full_name} ${profile.email}`.toLowerCase().includes(query)))
     .map(profile => {
       const shift = shifts.find(item => item.id === profile.shift_id)
@@ -247,7 +248,6 @@ userForm.addEventListener('submit', async event => {
   credentialEmail.textContent = data.email
   credentialPassword.textContent = data.temporary_password
   credentialsBox.classList.remove('hidden')
-  requestAnimationFrame(() => credentialsBox.scrollIntoView({ behavior: 'smooth', block: 'center' }))
   event.target.reset()
   toggleCreateRoleFields(true)
   loadAll()
@@ -301,23 +301,11 @@ async function resetPassword(id) {
   if (!confirm('Gerar uma nova senha temporária?')) return
   const data = await manageUser({ action: 'reset-password', user_id: id })
   if (data) {
-    credentialEmail.textContent = data.email || '—'
-    credentialPassword.textContent = data.temporary_password || '—'
+    credentialEmail.textContent = data.email
+    credentialPassword.textContent = data.temporary_password
     credentialsBox.classList.remove('hidden')
     const usersButton = document.querySelector('.sidebar [data-module="users"]')
     showPage('users', usersButton)
-    requestAnimationFrame(() => credentialsBox.scrollIntoView({ behavior: 'smooth', block: 'center' }))
-  }
-}
-
-async function copyTemporaryPassword() {
-  const password = credentialPassword.textContent.trim()
-  if (!password || password === '—') return alert('Nenhuma senha disponível para copiar.')
-  try {
-    await navigator.clipboard.writeText(password)
-    alert('Senha temporária copiada!')
-  } catch {
-    window.prompt('Copie a senha temporária:', password)
   }
 }
 
