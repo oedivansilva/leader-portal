@@ -110,7 +110,30 @@ async function loadClimateAnalytics() {
   if (part.error || summary.error) return alert((part.error||summary.error).message)
   const p = part.data?.[0] || {invited:0,responded:0,participation_pct:0}
   climateParticipationCards.innerHTML = `<div class="people-mini-stat"><span>Convidados</span><strong>${p.invited}</strong></div><div class="people-mini-stat"><span>Responderam</span><strong>${p.responded}</strong></div><div class="people-mini-stat"><span>Participação</span><strong>${p.participation_pct}%</strong></div><div class="people-mini-stat"><span>Modelo</span><strong>${climateSurveys.find(s=>s.id===id)?.anonymous?'Anônimo':'Identificado'}</strong></div>`
-  climateSummaryRows.innerHTML = (summary.data || []).map(q=>`<div class="people-task"><div><h4>${escapeHTML(q.question_text)}</h4><p class="muted">${escapeHTML(q.category)} · ${escapeHTML(q.question_type)}</p></div><div style="text-align:right"><strong>${q.question_type==='enps_0_10' ? `eNPS ${q.enps ?? '—'}` : q.question_type==='scale_1_5' ? `${q.average_value ?? '—'} / 5` : `${q.response_count} respostas`}</strong>${q.favorable_pct!=null?`<div class="muted">Favorabilidade ${q.favorable_pct}%</div>`:''}</div></div>`).join('') || '<div class="people-empty">Sem respostas ainda.</div>'
+  climateSummaryRows.innerHTML = (summary.data || []).map(q=>{
+    const responseCount = Number(q.response_count || 0)
+    let resultHtml = ''
+
+    if (q.question_type === 'enps_0_10') {
+      const score = q.enps == null ? null : Number(q.enps)
+      const scoreLabel = score == null ? '—' : `${score > 0 ? '+' : ''}${score}`
+      resultHtml = `
+        <strong>eNPS ${scoreLabel}</strong>
+        <div class="muted">Média ${q.average_value ?? '—'} / 10 · ${responseCount} resposta${responseCount===1?'':'s'}</div>
+        <div class="muted">Promotores ${q.promoter_count || 0} · Passivos ${q.passive_count || 0} · Detratores ${q.detractor_count || 0}</div>`
+    } else if (q.question_type === 'scale_1_5') {
+      resultHtml = `
+        <strong>${q.average_value ?? '—'} / 5</strong>
+        <div class="muted">${responseCount} resposta${responseCount===1?'':'s'}</div>
+        ${q.favorable_pct!=null?`<div class="muted">Favorabilidade ${q.favorable_pct}%</div>`:''}`
+    } else {
+      resultHtml = `
+        <strong>${responseCount} resposta${responseCount===1?'':'s'}</strong>
+        ${responseCount ? `<div style="margin-top:8px"><button class="btn btn-light" type="button" onclick="viewClimateTextResponses('${id}','${q.question_id}')">Ver respostas</button></div>` : ''}`
+    }
+
+    return `<div class="people-task"><div><h4>${escapeHTML(q.question_text)}</h4><p class="muted">${escapeHTML(q.category)} · ${escapeHTML(q.question_type)}</p></div><div style="text-align:right">${resultHtml}</div></div>`
+  }).join('') || '<div class="people-empty">Sem respostas ainda.</div>'
 }
 window.loadClimateAnalytics = loadClimateAnalytics
 
