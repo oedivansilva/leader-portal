@@ -200,15 +200,20 @@
 </div>
 <button id="createUserBtn" class="btn btn-success" style="grid-column:1/-1">Criar usuário</button>
 </form>
-<div id="credentialsBox" class="notice hidden" style="margin-top:15px">
-<strong>Copie a senha temporária agora</strong>
-<p>E-mail: <span id="credentialEmail">
-</span>
-</p>
-<p>Senha: <code id="credentialPassword">
-</code>
-</p>
 </div>
+<div id="credentialsBox" class="notice hidden temporary-credentials-box" style="margin:15px 0">
+  <div class="temporary-credentials-head">
+    <div>
+      <strong>Nova senha temporária gerada</strong>
+      <p class="muted" style="margin:4px 0 0">Copie e envie ao usuário. Ela não será exibida novamente depois que este aviso for fechado.</p>
+    </div>
+    <button type="button" class="btn btn-light" onclick="credentialsBox.classList.add('hidden')">Fechar</button>
+  </div>
+  <div class="temporary-credentials-data">
+    <p>E-mail: <strong id="credentialEmail"></strong></p>
+    <p>Senha: <code id="credentialPassword"></code></p>
+    <button type="button" class="btn btn-primary" onclick="copyTemporaryPassword()">Copiar senha</button>
+  </div>
 </div>
     <div id="editUserCard" class="card hidden">
 <div class="page-head">
