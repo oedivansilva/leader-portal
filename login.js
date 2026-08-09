@@ -43,13 +43,27 @@ document.getElementById('loginForm').addEventListener('submit', async event => {
   const button = event.submitter
   button.disabled = true
 
+  const identifier = email.value.trim()
+  const cpfDigits = identifier.replace(/\D/g,'')
+  const isCpfLogin = cpfDigits.length === 11 && !identifier.includes('@')
+  const authEmail = isCpfLogin ? `${cpfDigits}@colaborador.nexo.local` : identifier.toLowerCase()
+  let authPassword = password.value
+
+  // Para o primeiro acesso por CPF, aceita tanto DDMMAAAA quanto DD/MM/AAAA.
+  if (isCpfLogin) {
+    const birthDigits = authPassword.replace(/\D/g,'')
+    if (birthDigits.length === 8 && /^\d{8}$/.test(birthDigits)) {
+      authPassword = `${birthDigits.slice(0,2)}/${birthDigits.slice(2,4)}/${birthDigits.slice(4)}`
+    }
+  }
+
   const { error } = await db.auth.signInWithPassword({
-    email: email.value.trim(),
-    password: password.value
+    email: authEmail,
+    password: authPassword
   })
 
   button.disabled = false
-  if (error) return alert(`Erro ao entrar: ${error.message}`)
+  if (error) return alert(isCpfLogin ? 'CPF ou senha inválidos. No primeiro acesso, use sua data de nascimento no formato DD/MM/AAAA.' : `Erro ao entrar: ${error.message}`)
   await redirectUser()
 })
 

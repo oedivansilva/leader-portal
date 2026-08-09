@@ -1,7 +1,7 @@
 let hireCtx = null
 let myHireCheckpoints = []
 
-const bpoQuestions = [
+const recruitmentQuestions = [
   ['bpo_role_clarity','A vaga e as atividades foram explicadas corretamente'],
   ['bpo_schedule_clarity','A escala e o horário informados corresponderam ao encontrado na operação'],
   ['bpo_pay_benefits','Salário e benefícios foram explicados com clareza'],
@@ -51,7 +51,7 @@ async function loadMyHireJourney() {
   const first = myHireCheckpoints[0]
   const latestAttendance = [...myHireCheckpoints].reverse().find(item=>item.attendance_pct!=null) || first
   myHireSummary.innerHTML = `<div class="people-grid">
-    <div class="people-card span-8"><h2>Seu acompanhamento</h2><p class="muted">Admissão: ${formatDate(first.admission_date)} · ${escapeHTML(first.operation_name)} · BPO: ${escapeHTML(first.bpo_name)}</p><div class="notice">As respostas desta avaliação são identificadas e usadas para entender separadamente a qualidade do recrutamento, onboarding e acompanhamento da liderança.</div></div>
+    <div class="people-card span-8"><h2>Seu acompanhamento</h2><p class="muted">Admissão: ${formatDate(first.admission_date)} · ${escapeHTML(first.operation_name)} · Origem: ${escapeHTML(first.bpo_name)}</p><div class="notice">As respostas desta avaliação são identificadas e usadas para entender separadamente a qualidade do recrutamento, onboarding e acompanhamento da liderança.</div></div>
     <div class="people-card span-4"><h3>Assiduidade</h3><div style="font-size:30px;font-weight:700">${pct(latestAttendance.attendance_pct)}</div><p class="muted">F/NS: ${Number(latestAttendance.f_count||0)+Number(latestAttendance.ns_count||0)} · Atestados AM: ${latestAttendance.am_count||0}</p><small class="muted">Atestados não reduzem automaticamente sua avaliação.</small></div>
   </div>`
 
@@ -71,7 +71,7 @@ window.openMyHireEvaluation = async function(checkpointId) {
   const includeBpo = day === 7
   const html = `<form id="myHireEvaluationForm" data-checkpoint-id="${checkpointId}">
     ${scoreGuide()}
-    ${includeBpo ? questionRows('Sobre o recrutamento / BPO',bpoQuestions,previous.answers||{}) : ''}
+    ${includeBpo ? questionRows('Sobre o recrutamento',recruitmentQuestions,previous.answers||{}) : ''}
     ${questionRows('Sobre o onboarding',onboardingQuestions,previous.answers||{})}
     ${questionRows('Sobre a liderança',leadershipQuestions,previous.answers||{})}
     <div class="field"><label>Quer deixar algum comentário? <span class="muted">(opcional)</span></label><textarea id="myHireComment" class="input" rows="4">${escapeHTML(previous.comment||'')}</textarea></div>

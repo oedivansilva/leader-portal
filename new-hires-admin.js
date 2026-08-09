@@ -89,7 +89,7 @@ async function loadHireBase() {
 
   if (hireCtx.profile.role === 'admin') {
     hireBpo.innerHTML = '<option value="">Selecione</option>' + hireBpos.filter(b=>b.active).map(b=>`<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('')
-    hireBpoFilter.innerHTML = '<option value="">Todas as BPOs</option>' + hireBpos.map(b=>`<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('')
+    hireBpoFilter.innerHTML = '<option value="">Todas as origens</option><option value="__internal__">Recrutamento interno</option>' + hireBpos.map(b=>`<option value="${b.id}">BPO · ${escapeHTML(b.name)}</option>`).join('')
     renderBpoList()
   }
 }
@@ -111,27 +111,74 @@ bpoForm?.addEventListener('submit', async event => {
 
 hireCaseForm?.addEventListener('submit', async event => {
   event.preventDefault()
+  const source = hireSource.value
+  if (source === 'bpo' && !hireBpo.value) return alert('Selecione a BPO responsável ou altere a origem para Recrutamento interno.')
   const { data, error } = await db.rpc('create_people_hire_case', {
     p_employee_id: hireEmployee.value,
-    p_bpo_id: hireBpo.value,
+    p_bpo_id: source === 'internal' ? null : hireBpo.value,
     p_notes: hireNotes.value.trim() || null
   })
   if (error) return alert(error.message)
+  const selectedPreset = hireCandidatePreset.value
   event.target.reset()
+  hireSource.value = 'bpo'
+  hireCandidatePreset.value = selectedPreset || '30'
+  toggleHireSource()
+  setCandidateRangeFromPreset()
   alert('Acompanhamento criado com D+7, D+30, D+60 e D+90.')
   await loadHireCases()
   await populateHireCandidates()
   if (hireCtx.profile.role === 'admin') loadHireAnalytics()
 })
 
+function isoDate(date) {
+  const d = new Date(date)
+  return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10)
+}
+
+function setCandidateRangeFromPreset() {
+  if (!window.hireCandidatePreset) return
+  const preset = hireCandidatePreset.value
+  if (preset === 'custom') return
+  const now = new Date()
+  let start = new Date(now), end = new Date(now)
+  if (preset === '30') start.setDate(now.getDate()-30)
+  if (preset === 'month') start = new Date(now.getFullYear(),now.getMonth(),1)
+  if (preset === 'previous_month') {
+    start = new Date(now.getFullYear(),now.getMonth()-1,1)
+    end = new Date(now.getFullYear(),now.getMonth(),0)
+  }
+  if (preset === 'year') start = new Date(now.getFullYear(),0,1)
+  hireAdmissionStart.value = isoDate(start)
+  hireAdmissionEnd.value = isoDate(end)
+}
+window.setCandidateRangeFromPreset = setCandidateRangeFromPreset
+
+function toggleHireSource() {
+  const internal = hireSource.value === 'internal'
+  hireBpoField.classList.toggle('hidden',internal)
+  hireBpo.required = !internal
+  if (internal) hireBpo.value = ''
+}
+window.toggleHireSource = toggleHireSource
+
 async function populateHireCandidates() {
   if (hireCtx.profile.role !== 'admin') return
   const { data: existing, error } = await db.from('people_hire_cases').select('employee_id')
   if (error) return
   const used = new Set((existing || []).map(row=>row.employee_id))
-  const candidates = hireEmployees.filter(e=>!used.has(e.id))
-  hireEmployee.innerHTML = '<option value="">Selecione</option>' + candidates.map(e=>`<option value="${e.id}">${escapeHTML(e.registration)} — ${escapeHTML(e.full_name)} · adm. ${formatDate(e.admission_date)}</option>`).join('')
+  const start = hireAdmissionStart.value || '1900-01-01'
+  const end = hireAdmissionEnd.value || '2999-12-31'
+  const term = (hireEmployeeSearch.value || '').trim().toLowerCase()
+  const candidates = hireEmployees
+    .filter(e=>!used.has(e.id))
+    .filter(e=>e.admission_date && e.admission_date >= start && e.admission_date <= end)
+    .filter(e=>!term || `${e.registration} ${e.full_name}`.toLowerCase().includes(term))
+    .sort((a,b)=>String(b.admission_date).localeCompare(String(a.admission_date)) || a.full_name.localeCompare(b.full_name))
+  hireEmployee.innerHTML = '<option value="">Selecione</option>' + candidates.slice(0,200).map(e=>`<option value="${e.id}">${escapeHTML(e.registration)} — ${escapeHTML(e.full_name)} · adm. ${formatDate(e.admission_date)}</option>`).join('')
+  hireCandidateCount.textContent = candidates.length ? `${candidates.length} colaborador(es) encontrado(s) no filtro${candidates.length>200?' · exibindo os 200 mais recentes':''}.` : 'Nenhum colaborador encontrado nesse período/filtro.'
 }
+window.populateHireCandidates = populateHireCandidates
 
 async function loadHireCases() {
   const { data, error } = await db.rpc('get_people_hire_case_list')
@@ -143,7 +190,7 @@ async function loadHireCases() {
     return `<tr>
       <td><strong>${escapeHTML(row.employee_name)}</strong><br><small>${escapeHTML(row.registration)}</small></td>
       <td>${formatDate(row.admission_date)}<br><small>D+${row.day_number}</small></td>
-      <td>${escapeHTML(row.bpo_name)}</td>
+      <td><strong>${row.bpo_id?'BPO':'Interno'}</strong><br><small>${escapeHTML(row.bpo_name)}</small></td>
       <td>${escapeHTML(row.operation_name)}</td>
       <td>${escapeHTML(row.leader_name||'Sem líder')}</td>
       <td><strong>${stage}</strong><br><small>${formatDate(row.next_due_date)}</small></td>
@@ -152,18 +199,43 @@ async function loadHireCases() {
       <td><button class="btn btn-light" onclick="openHireCase('${row.case_id}')">Abrir</button></td>
     </tr>`
   }).join('') || '<tr><td colspan="9" class="empty">Nenhum acompanhamento criado.</td></tr>'
+  if (hireCtx.profile.role === 'admin') await loadHrLeadershipPendencies()
 }
 window.loadHireCases = loadHireCases
 
+async function loadHrLeadershipPendencies() {
+  if (hireCtx.profile.role !== 'admin' || !window.hireHrPendingList) return
+  const today = new Date().toISOString().slice(0,10)
+  const {data,error} = await db.from('people_hire_checkpoints')
+    .select('id,case_id,checkpoint_day,due_date,hr_submitted_at')
+    .lte('due_date',today)
+    .is('hr_submitted_at',null)
+    .order('due_date')
+  if (error) {
+    hireHrPendingList.innerHTML = `<div class="notice">${escapeHTML(error.message)}</div>`
+    return
+  }
+  const caseMap = new Map(hireCases.map(row=>[row.case_id,row]))
+  const pending = (data||[]).map(cp=>({cp,row:caseMap.get(cp.case_id)})).filter(item=>item.row)
+  hireHrPendingCount.textContent = pending.length
+  hireHrPendingList.innerHTML = pending.map(({cp,row})=>`<div class="people-task hire-hr-task">
+    <div><strong>${escapeHTML(row.employee_name)}</strong><div class="muted">${escapeHTML(row.registration)} · D+${cp.checkpoint_day} · Líder: ${escapeHTML(row.leader_name||'Sem líder')} · ${escapeHTML(row.operation_name)}</div></div>
+    <button class="btn btn-primary" onclick="openHireEvaluation('${cp.id}','hr')">Avaliar liderança</button>
+  </div>`).join('') || '<div class="people-empty">Nenhuma avaliação de liderança pendente para o RH. 🎉</div>'
+}
+window.loadHrLeadershipPendencies = loadHrLeadershipPendencies
+
 async function loadHireAnalytics() {
   if (hireCtx.profile.role !== 'admin') return
+  const filterValue = hireBpoFilter.value
   const { data, error } = await db.rpc('get_people_hire_bpo_analytics', {
     p_start: hireStart.value,
     p_end: hireEnd.value,
-    p_bpo_id: hireBpoFilter.value || null
+    p_bpo_id: filterValue && filterValue !== '__internal__' ? filterValue : null
   })
   if (error) return alert(error.message)
-  const rows = data || []
+  let rows = data || []
+  if (filterValue === '__internal__') rows = rows.filter(r=>!r.bpo_id)
   const sumHires = rows.reduce((s,r)=>s+Number(r.hires||0),0)
   const weighted = key => {
     const valid = rows.filter(r=>r[key]!=null && Number(r.hires)>0)
@@ -177,7 +249,7 @@ async function loadHireAnalytics() {
     <div class="people-mini-stat"><span>Onboarding</span><strong>${pct(weighted('onboarding_pct'))}</strong></div>
     <div class="people-mini-stat"><span>Liderança</span><strong>${pct(weighted('leadership_pct'))}</strong></div>
     <div class="people-mini-stat"><span>Assiduidade F/NS</span><strong>${pct(weighted('attendance_pct'))}</strong></div>`
-  hireAnalyticsRows.innerHTML = rows.map(r=>`<tr><td><strong>${escapeHTML(r.bpo_name)}</strong></td><td>${r.hires}</td><td>${pct(r.recruitment_pct)}</td><td>${pct(r.adaptation_pct)}</td><td>${pct(r.onboarding_pct)}</td><td>${pct(r.leadership_pct)}</td><td>${pct(r.attendance_pct)}</td><td>${r.medical_certificates||0}</td><td>${pct(r.retention_d30)}</td><td>${pct(r.retention_d90)}</td></tr>`).join('') || '<tr><td colspan="10" class="empty">Sem dados no período.</td></tr>'
+  hireAnalyticsRows.innerHTML = rows.map(r=>`<tr><td><strong>${r.bpo_id?'BPO':'Interno'}</strong><br><small>${escapeHTML(r.bpo_name)}</small></td><td>${r.hires}</td><td>${pct(r.recruitment_pct)}</td><td>${pct(r.adaptation_pct)}</td><td>${pct(r.onboarding_pct)}</td><td>${pct(r.leadership_pct)}</td><td>${pct(r.attendance_pct)}</td><td>${r.medical_certificates||0}</td><td>${pct(r.retention_d30)}</td><td>${pct(r.retention_d90)}</td></tr>`).join('') || '<tr><td colspan="10" class="empty">Sem dados no período.</td></tr>'
 }
 window.loadHireAnalytics = loadHireAnalytics
 
@@ -188,7 +260,7 @@ window.openHireCase = async function(caseId) {
   const attendance = related || {}
   const html = `
     <div class="people-mini-grid" style="margin-bottom:16px">
-      <div class="people-mini-stat"><span>BPO</span><strong>${escapeHTML(related?.bpo_name||'—')}</strong></div>
+      <div class="people-mini-stat"><span>Origem</span><strong>${escapeHTML(related?.bpo_name||'—')}</strong></div>
       <div class="people-mini-stat"><span>Assiduidade</span><strong>${pct(attendance.attendance_pct)}</strong></div>
       <div class="people-mini-stat"><span>Faltas / NS</span><strong>${Number(attendance.f_count||0)+Number(attendance.ns_count||0)}</strong></div>
       <div class="people-mini-stat"><span>Atestados AM</span><strong>${attendance.am_count||0}</strong></div>
@@ -232,7 +304,7 @@ window.openHireEvaluation = async function(checkpointId, reviewerType) {
     <div class="field"><label>Conclusão</label><select id="hireEvalRecommendation" class="input"><option value="">Selecione</option>${recommendations.map(([value,label])=>`<option value="${value}" ${previous.recommendation===value?'selected':''}>${escapeHTML(label)}</option>`).join('')}</select></div>
     <button class="btn btn-primary">Salvar avaliação</button>
   </form>`
-  openPeopleModal(`${reviewerType==='leader'?'Avaliação do novo contratado':'Avaliação RH da liderança'} — D+${payload.checkpoint.day}`,`${payload.case.employee_name} · ${payload.case.bpo_name}`,html)
+  openPeopleModal(`${reviewerType==='leader'?'Avaliação do novo contratado':'Avaliação RH da liderança'} — D+${payload.checkpoint.day}`,`${payload.case.employee_name} · ${payload.case.bpo_name || 'Recrutamento interno'}`,html)
   hireEvaluationForm.addEventListener('submit',submitHireEvaluation)
 }
 
@@ -277,7 +349,7 @@ window.viewHireCheckpointResults = async function(checkpointId) {
   }).join('')
   const a = payload.attendance || {}
   const html = `<div class="people-mini-grid">${cards.map(([label,value])=>`<div class="people-mini-stat"><span>${label}</span><strong>${pct(value)}</strong></div>`).join('')}<div class="people-mini-stat"><span>Assiduidade F/NS</span><strong>${pct(a.attendance_pct)}</strong></div></div><div class="notice" style="margin-top:14px">D+${payload.checkpoint.day}: ${a.f_count||0} falta(s), ${a.ns_count||0} no-show e ${a.am_count||0} atestado(s). AM é apenas contextual.</div>${details || '<div class="people-empty" style="margin-top:14px">Nenhuma avaliação enviada ainda.</div>'}`
-  openPeopleModal(`Resultados — D+${payload.checkpoint.day}`,`${payload.case.employee_name} · ${payload.case.bpo_name}`,html)
+  openPeopleModal(`Resultados — D+${payload.checkpoint.day}`,`${payload.case.employee_name} · ${payload.case.bpo_name || 'Recrutamento interno'}`,html)
 }
 
 getSessionContext().then(async context => {
@@ -291,6 +363,14 @@ getSessionContext().then(async context => {
   if (context.profile.role==='admin') {
     hireAdminSetup.classList.remove('hidden')
     hireAnalyticsAdmin.classList.remove('hidden')
+    hireHrReviewAdmin.classList.remove('hidden')
+    setCandidateRangeFromPreset()
+    hireCandidatePreset.addEventListener('change',()=>{setCandidateRangeFromPreset();populateHireCandidates()})
+    hireEmployeeSearch.addEventListener('input',()=>populateHireCandidates())
+    hireAdmissionStart.addEventListener('change',()=>{hireCandidatePreset.value='custom';populateHireCandidates()})
+    hireAdmissionEnd.addEventListener('change',()=>{hireCandidatePreset.value='custom';populateHireCandidates()})
+    hireSource.addEventListener('change',toggleHireSource)
+    toggleHireSource()
   }
   try {
     await loadHireBase()

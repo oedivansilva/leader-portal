@@ -29,9 +29,9 @@
     <section id="loginCard" class="auth-card">
       <span class="auth-card-kicker">Bem-vindo ao NEXO</span>
       <h1>Acesse sua conta</h1>
-      <p class="muted">Entre com a conta fornecida pelo administrador.</p>
+      <p class="muted">Lideranças e administradores entram com e-mail. Colaboradores podem entrar com o CPF.</p>
       <form id="loginForm" class="stack">
-        <div class="field"><label>E-mail</label><input id="email" type="email" class="input" autocomplete="email" required></div>
+        <div class="field"><label>E-mail ou CPF</label><input id="email" type="text" class="input" autocomplete="username" placeholder="seu@email.com ou CPF" required></div>
         <div class="field"><label>Senha</label><input id="password" type="password" class="input" autocomplete="current-password" required></div>
         <button class="btn btn-primary auth-submit">Entrar</button>
       </form>
@@ -39,7 +39,7 @@
     <section id="passwordCard" class="auth-card hidden">
       <span class="auth-card-kicker">Primeiro acesso</span>
       <h1>Crie sua senha pessoal</h1>
-      <p class="muted">Substitua a senha temporária antes de continuar.</p>
+      <p class="muted">No primeiro acesso do colaborador, a data de nascimento é apenas uma senha inicial. Crie uma senha pessoal para continuar.</p>
       <form id="passwordForm" class="stack">
         <div class="field"><label>Nova senha</label><input id="newPassword" type="password" minlength="8" class="input" autocomplete="new-password" required></div>
         <div class="field"><label>Confirmar senha</label><input id="confirmPassword" type="password" minlength="8" class="input" autocomplete="new-password" required></div>
