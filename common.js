@@ -84,6 +84,50 @@ window.requireModuleAccess = function(profile,moduleKey){
   return false
 }
 
+// Mantém o atalho de Novos Contratados visível também nas páginas antigas
+// do NEXO, que ainda possuem sidebar estática.
+window.ensureNewHiresSidebarLink = function(profile){
+  const sidebar = document.querySelector('.sidebar')
+  if(!sidebar) return
+
+  const existing = sidebar.querySelector('a[href^="new-hires-admin.html"],a[href^="new-hires.html"],[data-nexo-new-hires-link]')
+  if(!hasModuleAccess(profile,'new_hires')){
+    existing?.remove()
+    return
+  }
+  if(existing) return
+
+  const link = document.createElement('a')
+  link.className = 'nav-btn'
+  link.href = moduleUrlForProfile(profile,'new_hires')
+  link.dataset.module = 'new_hires'
+  link.dataset.nexoNewHiresLink = '1'
+  link.textContent = 'Novos Contratados'
+
+  const titles = [...sidebar.querySelectorAll('.nav-title')]
+  const peopleTitle = titles.find(el => (el.textContent || '').trim().toUpperCase().startsWith('PESSOAS'))
+  if(peopleTitle){
+    const climateLink = sidebar.querySelector('a[href*="module=climate"]')
+    if(climateLink){
+      climateLink.insertAdjacentElement('afterend',link)
+      return
+    }
+    let cursor = peopleTitle.nextElementSibling
+    while(cursor && !cursor.classList.contains('nav-title')) cursor = cursor.nextElementSibling
+    sidebar.insertBefore(link,cursor || null)
+    return
+  }
+
+  const accountTitle = titles.find(el => (el.textContent || '').trim().toUpperCase()==='CONTA')
+  const profileLink = sidebar.querySelector('a[href="profile.html"]')
+  const peopleGroup = document.createElement('div')
+  peopleGroup.className='nav-title'
+  peopleGroup.textContent='PESSOAS & DESENVOLVIMENTO'
+  const before = accountTitle || profileLink
+  sidebar.insertBefore(peopleGroup,before || null)
+  sidebar.insertBefore(link,before || null)
+}
+
 
 window.getSessionContext = async function(requiredRole) {
   const { data: { user } } = await db.auth.getUser()
@@ -96,6 +140,7 @@ window.getSessionContext = async function(requiredRole) {
   }
   document.querySelectorAll('[data-user-name]').forEach(el => el.textContent = profile.full_name || user.email.split('@')[0])
   document.querySelectorAll('[data-user-role]').forEach(el => el.textContent = roleLabel(profile.role))
+  ensureNewHiresSidebarLink(profile)
   return { user, profile }
 }
 

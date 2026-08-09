@@ -261,18 +261,19 @@ window.openHireCase = async function(caseId) {
   const html = `
     <div class="people-mini-grid" style="margin-bottom:16px">
       <div class="people-mini-stat"><span>Origem</span><strong>${escapeHTML(related?.bpo_name||'—')}</strong></div>
+      <div class="people-mini-stat"><span>Liderança</span><strong>${escapeHTML(related?.leader_name||'Não definida')}</strong></div>
       <div class="people-mini-stat"><span>Assiduidade</span><strong>${pct(attendance.attendance_pct)}</strong></div>
       <div class="people-mini-stat"><span>Faltas / NS</span><strong>${Number(attendance.f_count||0)+Number(attendance.ns_count||0)}</strong></div>
       <div class="people-mini-stat"><span>Atestados AM</span><strong>${attendance.am_count||0}</strong></div>
     </div>
     <div class="notice" style="margin-bottom:14px">Atestados médicos são exibidos apenas como contexto. Eles não reduzem automaticamente a nota do contratado nem da BPO.</div>
     <div class="hire-timeline">${(checkpoints||[]).map(cp=>renderCheckpointCard(cp, related)).join('')}</div>`
-  openPeopleModal(`${related?.employee_name||'Novo contratado'} · ${related?.registration||''}`,`Admissão ${formatDate(related?.admission_date)} · ${related?.operation_name||''}`,html)
+  openPeopleModal(`${related?.employee_name||'Novo contratado'} · ${related?.registration||''}`,`Admissão ${formatDate(related?.admission_date)} · ${related?.operation_name||''} · Líder: ${related?.leader_name||'não definido'}`,html)
 }
 
 function renderCheckpointCard(cp, related) {
   const due = cp.due_date <= new Date().toISOString().slice(0,10)
-  const leaderCan = hireCtx.profile.role==='leader' && related?.leader_id===hireCtx.profile.id
+  const leaderCan = hireCtx.profile.role==='leader' // a lista já é filtrada no banco pelas operações do líder
   const adminCan = hireCtx.profile.role==='admin'
   return `<div class="people-card hire-checkpoint-card">
     <div class="page-head"><div><h3>D+${cp.checkpoint_day}</h3><p class="muted">Previsto para ${formatDate(cp.due_date)}</p></div><span class="badge ${due?'badge-green':'badge-gray'}">${due?'Disponível':'Aguardando'}</span></div>
@@ -304,7 +305,7 @@ window.openHireEvaluation = async function(checkpointId, reviewerType) {
     <div class="field"><label>Conclusão</label><select id="hireEvalRecommendation" class="input"><option value="">Selecione</option>${recommendations.map(([value,label])=>`<option value="${value}" ${previous.recommendation===value?'selected':''}>${escapeHTML(label)}</option>`).join('')}</select></div>
     <button class="btn btn-primary">Salvar avaliação</button>
   </form>`
-  openPeopleModal(`${reviewerType==='leader'?'Avaliação do novo contratado':'Avaliação RH da liderança'} — D+${payload.checkpoint.day}`,`${payload.case.employee_name} · ${payload.case.bpo_name || 'Recrutamento interno'}`,html)
+  openPeopleModal(`${reviewerType==='leader'?'Avaliação do novo contratado':'Avaliação RH da liderança'} — D+${payload.checkpoint.day}`,`${payload.case.employee_name} · ${payload.case.bpo_name || 'Recrutamento interno'} · Líder: ${payload.case.leader_name || 'não definido'}`,html)
   hireEvaluationForm.addEventListener('submit',submitHireEvaluation)
 }
 
