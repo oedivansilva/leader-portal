@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#EE4D2D">
+<link rel="icon" type="image/svg+xml" href="favicon.svg"><title>NEXO — Minha experiência</title>
+<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="people.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<header class="topbar"><div style="display:flex;align-items:center;gap:12px"><button class="mobile-menu" onclick="toggleSidebar()">☰</button><div class="brand"><span class="brand-mark">N</span><span class="brand-copy"><strong>NEXO</strong><small>Gestão de Pessoas e Operações</small></span></div></div><div class="userbox"><div><strong data-user-name></strong><small data-user-role></small></div><button class="btn btn-danger" onclick="logout()">Sair</button></div></header>
+<div class="app"><aside id="portalSidebar" class="sidebar"></aside><main class="main"><div class="people-shell">
+<div class="people-hero"><h1>Minha experiência</h1><p>Acompanhamento dos seus primeiros dias no NEXO.</p></div>
+<section class="people-section active">
+  <div id="myHireSummary"></div>
+  <div class="people-card" style="margin-top:16px"><h2>Minha jornada</h2><p class="muted">As etapas ficam disponíveis na data programada. Suas respostas ajudam a separar recrutamento, onboarding e experiência com a liderança.</p><div id="myHireTimeline"></div></div>
+</section>
+</div></main></div>
+<div id="peopleModal" class="people-modal hidden"><div class="people-modal-card"><div class="people-modal-head"><div><h2 id="peopleModalTitle"></h2><p id="peopleModalSubtitle" class="muted"></p></div><button class="btn btn-light" onclick="closePeopleModal()">Fechar</button></div><div id="peopleModalBody"></div></div></div>
+<script src="config.js"></script><script src="common.js"></script><script src="new-hires.js"></script>
+</body></html>

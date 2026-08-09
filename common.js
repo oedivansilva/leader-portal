@@ -14,6 +14,7 @@ window.NEXO_MODULES = [
   { key: 'management', label: 'Escalas e benefícios', group: 'GESTÃO OPERACIONAL' },
   { key: 'mood', label: 'Humor', group: 'PESSOAS & DESENVOLVIMENTO' },
   { key: 'climate', label: 'Pesquisa de Clima', group: 'PESSOAS & DESENVOLVIMENTO' },
+  { key: 'new_hires', label: 'Novos Contratados', group: 'PESSOAS & DESENVOLVIMENTO' },
   { key: 'performance', label: 'Avaliação de Desempenho', group: 'PESSOAS & DESENVOLVIMENTO' },
   { key: 'pdi', label: 'PDI', group: 'PESSOAS & DESENVOLVIMENTO' },
   { key: 'people_analytics', label: 'People Analytics', group: 'PESSOAS & DESENVOLVIMENTO' },
@@ -24,9 +25,9 @@ window.NEXO_MODULES = [
 
 window.defaultMenuPermissions = function(role){
   if(role === 'admin') return NEXO_MODULES.map(module => module.key)
-  if(role === 'leader') return ['requests','presence']
+  if(role === 'leader') return ['requests','presence','new_hires']
   if(role === 'onsite') return ['requests']
-  if(role === 'employee') return ['mood','climate','performance','pdi']
+  if(role === 'employee') return ['mood','climate','new_hires','performance','pdi']
   return []
 }
 
@@ -40,6 +41,9 @@ window.hasModuleAccess = function(profile,moduleKey){
 }
 
 window.moduleUrlForProfile = function(profile,moduleKey){
+  if(moduleKey === 'new_hires') {
+    return profile?.role === 'employee' ? 'new-hires.html' : 'new-hires-admin.html'
+  }
   const peopleModules = ['mood','climate','performance','pdi','people_analytics']
   if(peopleModules.includes(moduleKey)) {
     return profile?.role === 'employee'

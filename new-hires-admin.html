@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#EE4D2D">
+<link rel="icon" type="image/svg+xml" href="favicon.svg"><title>NEXO — Novos Contratados</title>
+<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="people.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<header class="topbar"><div style="display:flex;align-items:center;gap:12px"><button class="mobile-menu" onclick="toggleSidebar()">☰</button><div class="brand"><span class="brand-mark">N</span><span class="brand-copy"><strong>NEXO</strong><small>Gestão de Pessoas e Operações</small></span></div></div><div class="userbox"><div><strong data-user-name></strong><small data-user-role></small></div><button class="btn btn-danger" onclick="logout()">Sair</button></div></header>
+<div class="app"><aside id="portalSidebar" class="sidebar"></aside><main class="main"><div class="people-shell">
+<div class="people-hero"><h1>Novos Contratados</h1><p>Acompanhamento da experiência, qualidade da contratação, liderança e assiduidade.</p></div>
+
+<section class="people-section active">
+  <div id="hireAdminSetup" class="people-grid hidden" style="margin-bottom:18px">
+    <div class="people-card span-4">
+      <h3>Cadastrar BPO</h3>
+      <form id="bpoForm">
+        <div class="field"><label>Nome da BPO / prestador</label><input id="bpoName" class="input" required placeholder="Ex.: Empresa de Recrutamento A"></div>
+        <button class="btn btn-primary">Cadastrar</button>
+      </form>
+      <div id="bpoList" style="margin-top:14px"></div>
+    </div>
+    <div class="people-card span-8">
+      <h3>Novo acompanhamento</h3>
+      <p class="muted">Vincule o colaborador à BPO responsável pela contratação. Os marcos D+7, D+30, D+60 e D+90 serão criados automaticamente.</p>
+      <form id="hireCaseForm" class="grid-2">
+        <div class="field"><label>Colaborador</label><select id="hireEmployee" class="input" required></select></div>
+        <div class="field"><label>BPO responsável</label><select id="hireBpo" class="input" required></select></div>
+        <div class="field" style="grid-column:1/-1"><label>Observação <span class="muted">(opcional)</span></label><textarea id="hireNotes" class="input" rows="3"></textarea></div>
+        <button class="btn btn-primary" style="grid-column:1/-1">Iniciar acompanhamento</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="hireAnalyticsAdmin" class="hidden">
+    <div class="page-head"><div><h2>Indicadores de contratação</h2><p class="muted">Atestados aparecem apenas como contexto e não reduzem automaticamente os indicadores.</p></div></div>
+    <div class="toolbar">
+      <input id="hireStart" class="input" type="date">
+      <input id="hireEnd" class="input" type="date">
+      <select id="hireBpoFilter" class="input"><option value="">Todas as BPOs</option></select>
+      <button class="btn btn-primary" onclick="loadHireAnalytics()">Atualizar</button>
+    </div>
+    <div id="hireOverallCards" class="people-mini-grid" style="margin:16px 0"></div>
+    <div class="people-card" style="margin-bottom:18px">
+      <h3>Comparativo por BPO</h3>
+      <div class="table-wrap"><table class="table"><thead><tr><th>BPO</th><th>Contratados</th><th>Recrutamento</th><th>Adaptação</th><th>Onboarding</th><th>Liderança</th><th>Assiduidade</th><th>Atestados</th><th>Retenção D+30</th><th>Retenção D+90</th></tr></thead><tbody id="hireAnalyticsRows"></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="people-card">
+    <div class="page-head"><div><h2>Acompanhamentos individuais</h2><p class="muted">Acompanhe cada contratado e as avaliações pendentes.</p></div><button class="btn btn-light" onclick="loadHireCases()">Atualizar</button></div>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Colaborador</th><th>Admissão</th><th>BPO</th><th>Operação</th><th>Líder</th><th>Etapa</th><th>F/NS</th><th>AM</th><th>Ação</th></tr></thead><tbody id="hireCaseRows"></tbody></table></div>
+  </div>
+</section>
+</div></main></div>
+
+<div id="peopleModal" class="people-modal hidden"><div class="people-modal-card"><div class="people-modal-head"><div><h2 id="peopleModalTitle"></h2><p id="peopleModalSubtitle" class="muted"></p></div><button class="btn btn-light" onclick="closePeopleModal()">Fechar</button></div><div id="peopleModalBody"></div></div></div>
+<script src="config.js"></script><script src="common.js"></script><script src="new-hires-admin.js"></script>
+</body></html>
