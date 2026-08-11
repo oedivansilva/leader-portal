@@ -271,9 +271,10 @@
           ['Indicador',value],
           ['Jornadas previstas no mês',Number(s.planned||0).toLocaleString('pt-BR')],
           ['Colaboradores considerados',s.consideredEmployees||0],
+          ['Horário pendente',s.schedulePendingCount||0],
           ['Ausências consideradas',absTotal]
         ])+
-        `<div class="nexo-bi-note"><strong>O que significa “jornadas previstas”?</strong><br>É a soma dos dias em que cada colaborador deveria trabalhar dentro do mês, conforme a escala vigente. Não são ${Number(s.planned||0).toLocaleString('pt-BR')} dias corridos: são jornadas acumuladas do efetivo considerado.${other?` Há também ${other} ausência(s) classificada(s) em outros códigos de ausência que compõem o ABS total.`:''}</div>`+
+        `<div class="nexo-bi-note"><strong>O que significa “jornadas previstas”?</strong><br>É a soma dos dias em que cada colaborador deveria trabalhar dentro do mês, conforme a escala vigente. Não são ${Number(s.planned||0).toLocaleString('pt-BR')} dias corridos: são jornadas acumuladas do efetivo considerado.${other?` Há também ${other} ausência(s) classificada(s) em outros códigos de ausência que compõem o ABS total.`:''}${s.schedulePendingCount?`<br><br><strong>⚠ ${s.schedulePendingCount} colaborador(es) estão com horário/escala pendente.</strong> Enquanto o horário não for confirmado, essas pessoas ficam fora do denominador do ABS para evitar cálculo incorreto.`:''}</div>`+
         `<div class="nexo-bi-section"><h3>Composição por operação</h3>${simpleTable(['Operação','Colaboradores','Jornadas previstas','Ausências','ABS'],byOp)}</div>`+
         `<div class="nexo-bi-section"><h3>Por turno / escala</h3>${simpleTable(['Turno / escala','F/NS','AM'],byScale)}</div>`
     } else if(type==='discipline'){

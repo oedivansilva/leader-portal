@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#EE4D2D">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<title>Administração — NEXO</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js">
+</script>
+</head>
+<body>
+<header class="topbar">
+<div style="display:flex;align-items:center;gap:12px">
+<button class="mobile-menu" onclick="toggleSidebar()">☰</button>
+<div class="brand" aria-label="NEXO — Gestão de Pessoas e Operações">
+<span class="brand-mark" aria-hidden="true">N</span>
+<span class="brand-copy"><strong>NEXO</strong><small>Gestão de Pessoas e Operações</small></span>
+</div>
+</div>
+<div class="userbox">
+<div>
+<strong data-user-name>
+</strong>
+<small data-user-role>
+</small>
+</div>
+<a class="btn btn-light" href="profile.html">Meu perfil</a>
+<button class="btn btn-danger" onclick="logout()">Sair</button>
+</div>
+</header>
+<div class="app">
+<aside class="sidebar">
+<div class="nav-title">Administração</div>
+<button class="nav-btn active" data-module="overview" onclick="showPage('overview',this)">Visão geral</button>
+<button class="nav-btn" data-module="employees" onclick="showPage('employees',this)">Colaboradores</button>
+<button class="nav-btn" data-module="requests" onclick="showPage('requests',this)">Solicitações</button>
+<button class="nav-btn" data-module="presence" onclick="showPage('presenceAdmin',this)">Controle de Presença</button>
+<button class="nav-btn" data-module="turnover" onclick="showPage('turnoverAdmin',this)">Turnover</button>
+<button class="nav-btn" data-module="management" onclick="showPage('management',this)">Escalas e benefícios</button>
+<button class="nav-btn" data-module="structure" onclick="showPage('structure',this)">Estrutura</button>
+<button class="nav-btn" data-module="users" onclick="showPage('users',this)">Usuários</button>
+<button class="nav-btn" data-module="audit" onclick="showPage('audit',this)">Auditoria</button>
+</aside>
+<main class="main">
+  <section id="overview" class="page active">
+<div class="page-head">
+<div>
+<h1>Visão geral</h1>
+<p class="muted">Indicadores disciplinares e operacionais.</p>
+</div>
+</div>
+<div class="toolbar" style="margin-top:18px">
+<input id="dashboardMonth" type="month" class="input" style="max-width:210px">
+<select id="dashboardOperation" class="input" style="max-width:320px">
+<option value="">Todas as operações</option>
+</select>
+<button class="btn btn-primary" onclick="loadDashboard()">Atualizar</button>
+</div>
+<div class="grid-3"><div class="stat"><span>ABS total</span><strong id="metricAbs">—</strong></div><div class="stat"><span>Faltas justificadas</span><strong id="metricJustified">0</strong></div><div class="stat"><span>Faltas injustificadas</span><strong id="metricUnjustified">0</strong></div></div>
+<div class="dashboard-chart-layout">
+<div class="dashboard-chart-left">
+<div class="card dashboard-pie-card">
+<h3>Status das solicitações</h3>
+<div class="chart-box chart-box-pie"><canvas id="statusChart"></canvas></div>
+</div>
+<div class="dashboard-primary-metrics">
+<div class="stat">
+<span>Advertências no período</span>
+<strong id="metricWarnings">0</strong>
+</div>
+<div class="stat">
+<span>Suspensões no período</span>
+<strong id="metricSuspensions">0</strong>
+</div>
+<div class="stat">
+<span>Tempo médio desde a 1ª ocorrência</span>
+<strong id="metricApplicationTime">—</strong>
+</div>
+</div>
+<div class="card dashboard-time-card">
+<h3>Tempos de aplicação</h3>
+<div class="dashboard-time-grid">
+<div class="stat">
+<span>Desde a ocorrência mais antiga</span>
+<strong id="metricOldest">—</strong>
+</div>
+<div class="stat">
+<span>Desde a ocorrência mais recente</span>
+<strong id="metricNewest">—</strong>
+</div>
+<div class="stat">
+<span>Média por ocorrência</span>
+<strong id="metricOccurrenceAverage">—</strong>
+</div>
+</div>
+</div>
+<div class="card dashboard-shift-absence-card">
+<h3>Faltas e atestados por turno</h3>
+<p class="muted dashboard-chart-note">Faltas: F e NS · Atestados: AM</p>
+<div class="chart-box chart-box-shift"><canvas id="shiftAbsenceChart"></canvas></div>
+</div>
+</div>
+<div class="dashboard-chart-right">
+<div class="card">
+<h3>ABS por operação</h3>
+<div class="chart-box chart-box-bar"><canvas id="absOperationChart"></canvas></div>
+</div>
+<div class="card">
+<h3>Medidas por região</h3>
+<div class="chart-box chart-box-bar"><canvas id="regionChart"></canvas></div>
+</div>
+<div class="card">
+<h3>Medidas por líder</h3>
+<div class="chart-box chart-box-bar"><canvas id="leaderChart"></canvas></div>
+</div>
+</div>
+</div>
+<div class="card"><h3>Turnover</h3><div class="grid-3"><div class="stat"><span>Quadro ativo no fim do período</span><strong id="metricActiveHeadcount">0</strong></div><div class="stat"><span>Admissões no período</span><strong id="metricAdmissions">0</strong></div><div class="stat"><span>Desligamentos no período</span><strong id="metricTerminations">0</strong></div><div class="stat"><span>Turnover geral</span><strong id="metricGeneralTurnover">—</strong></div><div class="stat"><span>Turnover de desligamentos</span><strong id="metricTurnover">—</strong></div><div class="stat"><span>Desligamentos voluntários</span><strong id="metricVoluntary">0</strong></div><div class="stat"><span>Desligamentos involuntários</span><strong id="metricInvoluntary">0</strong></div></div><div class="chart-box chart-box-turnover"><canvas id="turnoverChart"></canvas></div><div class="table-wrap" style="margin-top:18px"><h4>Colaboradores considerados no período</h4><table class="table"><thead><tr><th>Movimentação</th><th>MAT</th><th>Colaborador</th><th>Data</th></tr></thead><tbody id="turnoverMovementRows"></tbody></table></div></div>
+</section>
+  <section id="requests" class="page">
+<div class="page-head">
+<div>
+<h1>Solicitações</h1>
+<p class="muted">Acompanhe as solicitações atribuídas automaticamente aos Onsites.</p>
+</div>
+</div>
+<div class="card table-wrap">
+<table class="table">
+<thead>
+<tr>
+<th>Colaborador</th>
+<th>Operação</th>
+<th>Medida</th>
+<th>Status</th>
+<th>Onsite responsável</th>
+</tr>
+</thead>
+<tbody id="assignmentRows">
+</tbody>
+</table>
+</div>
+</section>
+  <section id="users" class="page">
+<div class="page-head">
+<div>
+<h1>Usuários</h1>
+<p class="muted">Cadastre, consulte e controle os acessos.</p>
+</div>
+<button class="btn btn-primary" onclick="document.getElementById('userFormCard').classList.toggle('hidden')">+ Novo usuário</button>
+</div>
+<div class="stat" style="max-width:280px;margin-bottom:18px"><span>Usuários ativos</span><strong id="statUsers">—</strong></div>
+    <div id="userFormCard" class="card hidden">
+<h2>Cadastrar usuário</h2>
+<form id="userForm" class="grid-2">
+<div class="field">
+<label>Nome completo</label>
+<input id="userName" class="input" required>
+</div>
+<div class="field">
+<label>E-mail</label>
+<input id="userEmail" type="email" class="input" required>
+</div>
+<div class="field">
+<label>Celular</label>
+<input id="userPhone" class="input" required>
+</div>
+<div class="field">
+<label>Perfil</label>
+<select id="userRole" class="input" required>
+<option value="leader">Líder / Gestor</option>
+<option value="onsite">Onsite</option>
+<option value="admin">Administrador</option>
+</select>
+</div>
+<div id="leaderOperationField" class="field">
+<label>Operações atendidas</label>
+<select id="leaderOperation" class="input" multiple size="7">
+</select>
+<small class="muted">Use Ctrl para selecionar mais de uma operação.</small>
+</div>
+<div id="leaderShiftField" class="field">
+<label>Turno</label>
+<select id="leaderShift" class="input">
+</select>
+</div>
+<div id="onsiteOperationsField" class="field hidden" style="grid-column:1/-1">
+<label>Operações atendidas</label>
+<select id="onsiteOperations" class="input" multiple size="7">
+</select>
+<small class="muted">Use Ctrl para selecionar mais de uma.</small>
+</div>
+<div class="field module-permissions-field" style="grid-column:1/-1">
+<label>Módulos disponíveis na barra lateral</label>
+<small class="muted">Marque exatamente o que este usuário poderá acessar. “Meu perfil” fica sempre disponível.</small>
+<div id="userPermissions" class="module-permissions-grid"></div>
+</div>
+<button id="createUserBtn" class="btn btn-success" style="grid-column:1/-1">Criar usuário</button>
+</form>
+<div id="credentialsBox" class="notice hidden" style="margin-top:15px">
+<strong>Copie a senha temporária agora</strong>
+<p>E-mail: <span id="credentialEmail">
+</span>
+</p>
+<p>Senha: <code id="credentialPassword">
+</code>
+</p>
+</div>
+</div>
+    <div id="editUserCard" class="card hidden">
+<div class="page-head">
+<h2>Editar usuário</h2>
+<button class="btn btn-light" type="button" onclick="closeEditUser()">Cancelar</button>
+</div>
+<form id="editUserForm" class="grid-2">
+<input id="editUserId" type="hidden">
+<div class="field">
+<label>Nome completo</label>
+<input id="editUserName" class="input" required>
+</div>
+<div class="field">
+<label>E-mail</label>
+<input id="editUserEmail" type="email" class="input" required>
+</div>
+<div class="field">
+<label>Celular</label>
+<input id="editUserPhone" class="input" required>
+</div>
+<div class="field">
+<label>Perfil</label>
+<select id="editUserRole" class="input">
+<option value="leader">Líder / Gestor</option>
+<option value="onsite">Onsite</option>
+<option value="admin">Administrador</option>
+</select>
+</div>
+<div id="editLeaderOperationField" class="field">
+<label>Operações atendidas</label>
+<select id="editLeaderOperation" class="input" multiple size="7">
+</select>
+<small class="muted">Use Ctrl para selecionar mais de uma operação.</small>
+</div>
+<div id="editLeaderShiftField" class="field">
+<label>Turno</label>
+<select id="editLeaderShift" class="input">
+</select>
+</div>
+<div id="editOnsiteOperationsField" class="field hidden" style="grid-column:1/-1">
+<label>Operações atendidas</label>
+<select id="editOnsiteOperations" class="input" multiple size="7">
+</select>
+</div>
+<div class="field module-permissions-field" style="grid-column:1/-1">
+<label>Módulos disponíveis na barra lateral</label>
+<small class="muted">As alterações entram em vigor no próximo acesso ou ao recarregar a página.</small>
+<div id="editUserPermissions" class="module-permissions-grid"></div>
+</div>
+<button class="btn btn-success" style="grid-column:1/-1">Salvar alterações</button>
+</form>
+</div>
+    <div class="card">
+<div class="toolbar">
+<input id="userSearch" class="input" style="max-width:360px" placeholder="Buscar por nome ou e-mail">
+<select id="userRoleFilter" class="input" style="max-width:200px">
+<option value="">Todos os perfis</option>
+<option value="admin">Admin</option>
+<option value="leader">Líder</option>
+<option value="onsite">Onsite</option>
+</select>
+</div>
+<div class="table-wrap">
+<table class="table">
+<thead>
+<tr>
+<th>Nome</th>
+<th>Perfil</th>
+<th>E-mail</th>
+<th>Operação/Turno</th>
+<th>Acessos</th>
+<th>Status</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody id="userRows">
+</tbody>
+</table>
+</div>
+</div>
+  </section>
+  <section id="structure" class="page">
+<div class="page-head">
+<div>
+<h1>Estrutura</h1>
+<p class="muted">Clientes, turnos e centros de custo.</p>
+</div>
+</div>
+<div class="stat" style="max-width:280px;margin-bottom:18px"><span>Operações cadastradas</span><strong id="statOperations">—</strong></div><span id="statPending" class="hidden">0</span>
+<div class="grid-3">
+<div class="card">
+<h3>Novo cliente</h3>
+<form id="clientForm" class="stack">
+<input id="clientName" class="input" placeholder="Nome do cliente" required>
+<button class="btn btn-primary">Cadastrar</button>
+</form>
+</div>
+<div class="card">
+<h3>Turno da liderança</h3>
+<form id="shiftForm" class="stack">
+<input id="shiftName" class="input" placeholder="Ex.: 1º Turno" required>
+<small class="muted">Usado somente no cadastro dos usuários líderes.</small>
+<button class="btn btn-primary">Cadastrar</button>
+</form>
+</div>
+<div class="card">
+<h3 id="operationFormTitle">Nova operação</h3>
+<form id="operationForm" class="stack">
+<input id="operationEditId" type="hidden">
+<select id="operationClient" class="input" required>
+</select>
+<input id="costCenter" class="input" placeholder="Centro de custo" required>
+<input id="department" class="input" placeholder="Departamento / HUB / SOC" required>
+<input id="operationCity" class="input" placeholder="Cidade/UF — Ex.: Ananindeua/PA" required>
+<button id="operationSaveBtn" class="btn btn-primary">Cadastrar</button>
+<button id="operationCancelBtn" type="button" class="btn btn-light hidden" onclick="cancelEditOperation()">Cancelar edição</button>
+</form>
+</div>
+</div>
+<div class="card table-wrap">
+<table class="table">
+<thead>
+<tr>
+<th>Cliente</th>
+<th>Centro de custo</th>
+<th>Departamento</th>
+<th>Cidade/UF</th>
+<th>Status</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody id="operationRows">
+</tbody>
+</table>
+</div>
+</section>
+<section id="management" class="page">
+<div class="page-head">
+<div>
+<h1>Escalas e benefícios</h1>
+<p class="muted">Configure os turnos, dias trabalhados e benefícios disponíveis.</p>
+</div>
+</div>
+<div class="grid-2">
+<div class="card">
+<h3>Novo turno / escala de trabalho</h3>
+<form id="scaleForm" class="stack">
+<input id="scaleEditId" type="hidden">
+<input id="scaleName" class="input" placeholder="Ex.: 5x2 — segunda a sexta" required>
+<input id="scaleDescription" class="input" placeholder="Descrição">
+<div class="field"><label>Dias trabalhados</label><div class="weekday-grid"><label><input type="checkbox" name="scaleDay" value="1"> Seg</label><label><input type="checkbox" name="scaleDay" value="2"> Ter</label><label><input type="checkbox" name="scaleDay" value="3"> Qua</label><label><input type="checkbox" name="scaleDay" value="4"> Qui</label><label><input type="checkbox" name="scaleDay" value="5"> Sex</label><label><input type="checkbox" name="scaleDay" value="6"> Sáb</label><label><input type="checkbox" name="scaleDay" value="0"> Dom</label></div><small class="muted">Dias não selecionados serão considerados folgas.</small></div>
+<button id="scaleSaveButton" class="btn btn-primary">Cadastrar turno / escala</button>
+<button id="scaleCancelButton" type="button" class="btn btn-light hidden" onclick="cancelScaleEdit()">Cancelar edição</button>
+</form>
+</div>
+<div class="card">
+<h3>Novo benefício</h3>
+<form id="benefitForm" class="stack">
+<input id="benefitName" class="input" placeholder="Ex.: Vale-transporte" required>
+<button class="btn btn-primary">Cadastrar benefício</button>
+</form>
+</div>
+</div>
+<div class="card table-wrap">
+<h3>Turnos / escalas cadastrados</h3>
+<table class="table"><thead><tr><th>Nome</th><th>Dias trabalhados</th><th>Descrição</th><th>Status</th><th>Ações</th></tr></thead><tbody id="scaleRows"></tbody></table>
+</div>
+</section>
+<section id="employees" class="page">
+<div class="page-head"><div><h1>Colaboradores</h1><p class="muted">Cadastro, contratos, situação, benefícios e histórico disciplinar.</p></div><button class="btn btn-primary" onclick="openEmployeeForm()">+ Novo colaborador</button></div>
+<div class="card">
+<div class="page-head"><div><h2>Importação em lote</h2><p class="muted">Use a planilha-modelo para cadastrar ou atualizar colaboradores pela MAT.</p></div><button type="button" class="btn btn-light" onclick="downloadEmployeeTemplate()">Baixar planilha-modelo</button></div>
+<div class="toolbar"><input id="employeeImportFile" type="file" class="input" accept=".xlsx,.xls,.csv" style="max-width:480px"><button id="employeeImportReadButton" type="button" class="btn btn-primary" onclick="readEmployeeImport()">Conferir arquivo</button></div>
+<div id="employeeImportPreview" class="hidden" style="margin-top:18px"><div class="grid-3"><div class="stat"><span>Linhas encontradas</span><strong id="importTotal">0</strong></div><div class="stat"><span>Linhas válidas</span><strong id="importValid">0</strong></div><div class="stat"><span>Linhas com erro</span><strong id="importInvalid">0</strong></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Linha</th><th>MAT</th><th>Colaborador</th><th>Operação</th><th>Turno/escala</th><th>Resultado da conferência</th></tr></thead><tbody id="employeeImportRows"></tbody></table></div><button id="employeeImportButton" type="button" class="btn btn-success" onclick="importEmployees()">Importar linhas válidas</button></div>
+</div>
+<div id="employeeFormCard" class="card hidden">
+<div class="page-head">
+<h2 id="employeeFormTitle">Cadastrar colaborador</h2>
+<button type="button" class="btn btn-light" onclick="closeEmployeeForm()">Cancelar</button>
+</div>
+<form id="employeeForm" class="grid-2">
+<input id="employeeId" type="hidden">
+<div class="field">
+<label>MAT</label>
+<input id="employeeRegistration" class="input" required>
+</div>
+<div class="field">
+<label>Nome completo</label>
+<input id="managementEmployeeName" class="input" required>
+</div>
+<div class="field">
+<label>CPF</label>
+<input id="managementEmployeeCpf" class="input" maxlength="14" required>
+</div>
+<div class="field">
+<label>Sexo</label>
+<select id="employeeSex" class="input" required>
+<option>Feminino</option>
+<option>Masculino</option>
+<option>Outro</option>
+<option>Não informado</option>
+</select>
+</div>
+<div class="field">
+<label>Data de nascimento</label>
+<input id="employeeBirthDate" type="date" class="input" required>
+</div>
+<div class="field">
+<label>Data de admissão</label>
+<input id="employeeAdmissionDate" type="date" class="input" required>
+</div>
+<div class="field">
+<label>Data de demissão</label>
+<input id="employeeDismissalDate" type="date" class="input">
+</div>
+<div class="field">
+<label>Operação (cliente/CC/departamento)</label>
+<select id="employeeOperation" class="input" required>
+</select>
+</div>
+<div class="field">
+<label>Líder</label>
+<select id="employeeLeader" class="input">
+</select>
+</div>
+<div class="field">
+<label>Turno / escala de trabalho</label>
+<select id="employeeScale" class="input" required>
+</select>
+</div>
+<input id="employeeScaleEffectiveDate" type="hidden">
+<div class="field">
+<label>Vencimento do contrato</label>
+<input id="employeeContractEnd" type="date" class="input">
+</div>
+<div class="field">
+<label>Prorrogação do contrato</label>
+<input id="employeeContractExtension" type="date" class="input">
+</div>
+<div class="field">
+<label>Celular</label>
+<input id="employeePhone" class="input">
+</div>
+<div class="field">
+<label>E-mail</label>
+<input id="employeeEmail" type="email" class="input">
+</div>
+<div class="field">
+<label>Status</label>
+<select id="employeeStatus" class="input">
+<option value="ativo">Ativo</option>
+<option value="afastado">Afastado</option>
+<option value="desligado">Desligado</option>
+</select>
+</div>
+<div class="field">
+<label>Tamanho do colete</label>
+<input id="employeeVest" class="input">
+</div>
+<div class="field">
+<label>Tamanho da luva</label>
+<input id="employeeGlove" class="input">
+</div>
+<div class="field">
+<label>Tamanho da bota</label>
+<input id="employeeBoot" class="input">
+</div>
+<div class="field"><label>Tipo de desligamento</label><select id="employeeTerminationType" class="input"><option value="">Não se aplica</option><option value="voluntario">Voluntário</option><option value="involuntario">Involuntário</option><option value="termino_contrato">Término de contrato</option></select></div>
+<div class="field"><label>Motivo do desligamento</label><input id="employeeTerminationReason" class="input"></div>
+<div class="field"><label>Elegível para recontratação</label><select id="employeeRehire" class="input"><option value="">Não informado</option><option value="true">Sim</option><option value="false">Não</option></select></div>
+<div class="field">
+<label>Benefícios</label>
+<select id="employeeBenefits" class="input" multiple size="6">
+</select>
+</div>
+<button class="btn btn-success" style="grid-column:1/-1">Salvar colaborador</button>
+</form>
+</div>
+<div class="card">
+<div class="toolbar">
+<input id="employeeSearch" class="input" placeholder="Buscar por MAT ou nome" style="max-width:360px">
+</div>
+<div class="table-wrap">
+<table class="table">
+<thead>
+<tr>
+<th>MAT</th>
+<th>Nome</th>
+<th>Operação</th>
+<th>Status</th>
+<th>Advertências</th>
+<th>Suspensões</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody id="employeeRows">
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="presenceAdmin" class="page"><div class="page-head"><div><h1>Controle de Presença</h1><p class="muted">Faltas registradas pelas lideranças.</p></div></div><div class="card table-wrap"><table class="table"><thead><tr><th>Data</th><th>MAT</th><th>Colaborador</th><th>Operação</th><th>Líder</th><th>Tipo</th><th>Observação</th></tr></thead><tbody id="adminAbsenceRows"></tbody></table></div></section>
+<section id="turnoverAdmin" class="page"><div class="page-head"><div><h1>Turnover</h1><p class="muted">Admissões, desligamentos e motivos.</p></div></div><div class="card table-wrap"><table class="table"><thead><tr><th>MAT</th><th>Colaborador</th><th>Admissão</th><th>Demissão</th><th>Tipo</th><th>Motivo</th><th>Recontratação</th></tr></thead><tbody id="turnoverRows"></tbody></table></div></section>
+  <section id="audit" class="page">
+<div class="page-head">
+<div>
+<h1>Auditoria</h1>
+<p class="muted">Histórico de marcações, alterações e solicitações realizadas no portal.</p>
+</div>
+</div>
+<div class="card table-wrap">
+<table class="table">
+<thead>
+<tr>
+<th>Data</th>
+<th>Usuário</th>
+<th>Atividade</th>
+<th>Origem</th>
+<th>Detalhes</th>
+</tr>
+</thead>
+<tbody id="auditRows">
+</tbody>
+</table>
+</div>
+</section>
+</main>
+</div>
+<script src="config.js">
+</script>
+<script src="common.js">
+</script>
+<script src="admin.js">
+</script>
+<script src="management.js">
+</script>
+<script src="dashboard.js">
+</script>
+<script src="workforce.js">
+</script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">
+</script>
+<script src="bulk-import.js">
+</script>
+</body>
+</html>

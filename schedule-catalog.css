@@ -1,0 +1,13 @@
+.schedule-catalog-card{margin-top:18px}
+.schedule-catalog-kpis,.schedule-preview-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0}
+.schedule-preview-summary{grid-template-columns:repeat(3,1fr)}
+.schedule-import-box{display:grid;grid-template-columns:minmax(260px,1fr) auto;gap:12px;align-items:end;padding:14px;border:1px solid #ececf0;border-radius:16px;background:#fafafa;margin:14px 0}
+.schedule-catalog-toolbar{margin:16px 0}.schedule-catalog-toolbar .input:first-child{min-width:320px;flex:1}
+.schedule-preview-table{max-height:360px;overflow:auto;margin:12px 0}
+.schedule-pending-card{margin-top:18px}.schedule-pending-actions{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:14px}.schedule-note{margin-bottom:12px}
+.schedule-time-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.schedule-modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:1500}.schedule-modal-card{width:min(760px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:22px;padding:24px;box-shadow:0 24px 80px rgba(15,23,42,.2)}
+.schedule-pending-select{min-width:280px}.schedule-pending-date{min-width:150px}
+.stat.compact{min-width:110px;padding:10px 14px;text-align:center}
+@media(max-width:1000px){.schedule-catalog-kpis{grid-template-columns:repeat(2,1fr)}.schedule-import-box{grid-template-columns:1fr}.schedule-pending-actions{align-items:flex-start;flex-direction:column}.schedule-catalog-toolbar .input:first-child{min-width:0}}
+@media(max-width:650px){.schedule-catalog-kpis,.schedule-preview-summary{grid-template-columns:1fr}.schedule-time-pair{grid-template-columns:1fr}.schedule-modal{padding:10px}.schedule-modal-card{padding:18px}}

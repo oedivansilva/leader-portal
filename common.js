@@ -595,3 +595,22 @@ window.loadNexoBiAssets = function(){
   }
 }
 loadNexoBiAssets()
+
+// ================================================================
+// NEXO — CATÁLOGO DE HORÁRIOS SHOPEE
+// Carregado apenas no Admin, sem exigir alteração estrutural no HTML.
+// ================================================================
+window.loadNexoScheduleCatalogAssets = function(){
+  if(!document.getElementById('structure') || !document.getElementById('employees')) return
+  if(!document.querySelector('link[data-nexo-schedule-catalog]')){
+    const link=document.createElement('link')
+    link.rel='stylesheet';link.href='schedule-catalog.css';link.dataset.nexoScheduleCatalog='1'
+    document.head.appendChild(link)
+  }
+  if(!document.querySelector('script[data-nexo-schedule-catalog]')){
+    const script=document.createElement('script')
+    script.src='schedule-catalog.js';script.dataset.nexoScheduleCatalog='1'
+    document.body.appendChild(script)
+  }
+}
+loadNexoScheduleCatalogAssets()

@@ -108,16 +108,20 @@ async function loadDashboard() {
   const plannedEmployeeIds = new Set()
   const plannedByOperation = {}
   const plannedEmployeesByOperation = {}
+  const schedulePendingIds = new Set()
 
   employees.forEach(employee => {
     eachDate(start, end, date => {
       const iso = date.toISOString().slice(0, 10)
-      const weekdays = dayMap[scaleAt(employee, iso)] || []
-      if (
-        iso >= employee.admission_date &&
-        (!employee.dismissal_date || iso <= employee.dismissal_date) &&
-        weekdays.includes(date.getDay())
-      ) {
+      const employed = iso >= employee.admission_date && (!employee.dismissal_date || iso <= employee.dismissal_date)
+      if (!employed) return
+      const currentScale = scaleAt(employee, iso)
+      if (!currentScale) {
+        schedulePendingIds.add(employee.id)
+        return
+      }
+      const weekdays = dayMap[currentScale] || []
+      if (weekdays.includes(date.getDay())) {
         planned++
         plannedEmployeeIds.add(employee.id)
 
@@ -127,6 +131,7 @@ async function loadDashboard() {
       }
     })
   })
+  const schedulePendingEmployees = employees.filter(employee => schedulePendingIds.has(employee.id))
 
   const plannedEmployeeCountByOperation = Object.fromEntries(
     Object.entries(plannedEmployeesByOperation).map(([label, ids]) => [label, ids.size])
@@ -352,6 +357,7 @@ async function loadDashboard() {
     operation,
     operationLabel: operation ? (operations.find(item => item.id === operation)?.cost_center || '') : 'Todas as operações',
     start,end,rows,requests,employees,absences,planned,consideredEmployees,plannedByOperation,plannedEmployeeCountByOperation,
+    schedulePendingCount:schedulePendingEmployees.length,schedulePendingEmployees,
     justifiedCount: absences.filter(item => justifiedCodes.includes(item.absence_type)).length,
     unjustifiedCount: absences.filter(item => unjustifiedCodes.includes(item.absence_type)).length,
     otherAbsenceCount: absences.filter(item => !justifiedCodes.includes(item.absence_type) && !unjustifiedCodes.includes(item.absence_type)).length,
