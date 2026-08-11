@@ -448,3 +448,89 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ================================================================
+   AJUSTES DE LAYOUT — NOVOS CONTRATADOS
+   ================================================================ */
+
+.page-head-tight {
+  margin-bottom: 12px;
+}
+
+.notice-soft {
+  background: #fff8f4;
+  border: 1px solid #ffd9c9;
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.hire-candidate-filters-compact {
+  grid-template-columns: 1.05fr .95fr .95fr 1.25fr auto;
+  padding: 12px;
+  margin: 0;
+}
+
+.hire-compact-panel {
+  padding: 18px;
+}
+
+.hire-compact-list {
+  display: grid;
+  gap: 10px;
+  max-height: 280px;
+  overflow: auto;
+  margin-top: 12px;
+}
+
+.hire-compact-list .people-task {
+  border: 1px solid #ececf0;
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: #fafafa;
+}
+
+.hire-compact-list .people-task:last-child {
+  border-bottom: 1px solid #ececf0;
+}
+
+.hire-analytics-card {
+  padding: 18px;
+}
+
+.hire-analytics-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.hire-overall-cards {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 1200px) {
+  .hire-overall-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 1050px) {
+  .hire-analytics-toolbar,
+  .hire-candidate-filters-compact {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hire-analytics-toolbar .btn,
+  .hire-candidate-filters-compact .btn {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .hire-overall-cards,
+  .hire-analytics-toolbar,
+  .hire-candidate-filters-compact {
+    grid-template-columns: 1fr;
+  }
+}
