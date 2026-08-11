@@ -614,3 +614,25 @@ window.loadNexoScheduleCatalogAssets = function(){
   }
 }
 loadNexoScheduleCatalogAssets()
+
+// ================================================================
+// NEXO — CARTEIRA COMPARTILHADA DE LIDERANÇA
+// Admin: configuração em Estrutura.
+// Líder: Minha equipe + Disponíveis para resgate.
+// ================================================================
+window.loadNexoLeadershipPoolAssets = function(){
+  const isAdminStructure=!!(document.getElementById('structure')&&document.getElementById('employees'))
+  const isLeaderPage=!!document.getElementById('leaderContext')
+  if(!isAdminStructure&&!isLeaderPage)return
+  if(!document.querySelector('link[data-nexo-leadership-pool]')){
+    const link=document.createElement('link')
+    link.rel='stylesheet';link.href='leadership-pool.css';link.dataset.nexoLeadershipPool='1'
+    document.head.appendChild(link)
+  }
+  if(!document.querySelector('script[data-nexo-leadership-pool]')){
+    const script=document.createElement('script')
+    script.src='leadership-pool.js';script.dataset.nexoLeadershipPool='1'
+    document.body.appendChild(script)
+  }
+}
+loadNexoLeadershipPoolAssets()

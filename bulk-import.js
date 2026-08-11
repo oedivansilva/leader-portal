@@ -25,6 +25,8 @@ function downloadEmployeeTemplate(){
     ['Se o horário estiver vazio ou não for reconhecido, o colaborador será importado e ficará em PENDÊNCIAS DE HORÁRIO.'],
     ['Sem horário confirmado, o colaborador não entra no denominador do ABS até a regularização.'],
     ['ESCALA_VIGENCIA é o primeiro dia em que o horário passa a valer; se vazia, será usada a admissão.'],
+    ['LIDER_EMAIL é opcional. Em novos cadastros, deixe vazio para o colaborador entrar na carteira compartilhada do turno e ser resgatado por uma liderança elegível.'],
+    ['Ao atualizar uma MAT existente, LIDER_EMAIL vazio mantém a liderança atual; não apaga a carteira já definida.'],
     ['Separe vários benefícios com ponto e vírgula (;).'],
     ['STATUS: ATIVO, AFASTADO ou DESLIGADO.'],
     ['SEXO: FEMININO, MASCULINO, OUTRO ou NÃO INFORMADO.'],
@@ -110,7 +112,8 @@ async function importEmployees(){
       const matchedCatalogId=catalogMatched?resolution.schedule.id:null
       const unresolved=item.schedulePending
 
-      const payload={registration:item.registration,full_name:item.name,operation_id:item.operation.id,leader_id:item.leader?.id||null,shift_id:null,sex:item.sex,admission_date:item.admission,dismissal_date:item.dismissal,status:item.dismissal?'desligado':item.status,contract_end_date:item.contractEnd,contract_extension_date:item.extension,phone:item.phone,email:item.email,vest_size:item.vest,glove_size:item.glove,boot_size:item.boot,termination_type:item.terminationType,termination_reason:item.terminationReason,eligible_for_rehire:item.rehire==='INVALID'?null:item.rehire,updated_at:new Date().toISOString()}
+      const leaderId=item.leader?.id||(item.existing?.leader_id||null)
+      const payload={registration:item.registration,full_name:item.name,operation_id:item.operation.id,leader_id:leaderId,shift_id:null,sex:item.sex,admission_date:item.admission,dismissal_date:item.dismissal,status:item.dismissal?'desligado':item.status,contract_end_date:item.contractEnd,contract_extension_date:item.extension,phone:item.phone,email:item.email,vest_size:item.vest,glove_size:item.glove,boot_size:item.boot,termination_type:item.terminationType,termination_reason:item.terminationReason,eligible_for_rehire:item.rehire==='INVALID'?null:item.rehire,updated_at:new Date().toISOString()}
       if(matchedScaleId){payload.scale_id=matchedScaleId;payload.schedule_catalog_id=matchedCatalogId}
       else if(!item.existing){payload.scale_id=null;payload.schedule_catalog_id=null}
       // Em cadastro existente, horário ausente/não reconhecido NÃO apaga a escala atual.
