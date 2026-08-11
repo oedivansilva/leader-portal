@@ -1,124 +1,599 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#EE4D2D">
-<link rel="icon" type="image/svg+xml" href="favicon.svg"><title>NEXO — Novos Contratados</title>
-<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="people.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#EE4D2D">
+
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <title>NEXO — Novos Contratados</title>
+
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="people.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- ==========================================================
+       AJUSTES LOCAIS DE LAYOUT
+       - Cabeçalho fixo
+       - Barra lateral fixa
+       - Scroll independente na barra lateral
+       - Indicadores compactos no topo
+       ========================================================== -->
+  <style>
+    :root {
+      --nexo-header-height: 78px;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body {
+      margin: 0;
+      overflow-x: hidden;
+    }
+
+    /* Cabeçalho permanece visível durante a navegação */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 1100;
+      min-height: var(--nexo-header-height);
+      background: #fff;
+    }
+
+    /* Layout principal */
+    .app {
+      display: flex;
+      align-items: flex-start;
+      min-height: calc(100vh - var(--nexo-header-height));
+    }
+
+    /* Sidebar fixa com rolagem própria */
+    .sidebar {
+      position: sticky;
+      top: var(--nexo-header-height);
+      align-self: flex-start;
+      height: calc(100vh - var(--nexo-header-height));
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: #d4d4da transparent;
+    }
+
+    .sidebar::-webkit-scrollbar {
+      width: 7px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: #d4d4da;
+      border-radius: 999px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb:hover {
+      background: #bfc0c7;
+    }
+
+    .main {
+      min-width: 0;
+      flex: 1;
+    }
+
+    /* Página sem a antiga tarja NEXO Pessoas */
+    .people-shell {
+      padding-top: 0;
+    }
+
+    /* Indicadores no topo */
+    .hire-dashboard-top {
+      margin-bottom: 18px;
+    }
+
+    .hire-dashboard-card {
+      padding: 20px;
+    }
+
+    .hire-dashboard-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+    }
+
+    .hire-dashboard-head h2 {
+      margin: 0 0 5px;
+    }
+
+    .hire-dashboard-head p {
+      margin: 0;
+    }
+
+    .hire-dashboard-filters {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.2fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .hire-dashboard-filters .input,
+    .hire-dashboard-filters .btn {
+      margin: 0;
+      min-height: 46px;
+    }
+
+    .hire-dashboard-stats {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px !important;
+    }
+
+    .hire-dashboard-stats .people-mini-stat {
+      min-height: 82px;
+      padding: 13px 15px;
+    }
+
+    .hire-dashboard-stats .people-mini-stat strong {
+      font-size: 25px;
+    }
+
+    /* Novo acompanhamento */
+    .hire-new-case {
+      margin-bottom: 18px;
+    }
+
+    .hire-candidate-filters-local {
+      display: grid;
+      grid-template-columns: 1.05fr .95fr .95fr 1.25fr auto;
+      gap: 10px;
+      align-items: end;
+      margin: 14px 0 10px;
+      padding: 12px;
+      border: 1px solid #ececf0;
+      border-radius: 16px;
+      background: #fafafa;
+    }
+
+    .hire-candidate-filters-local .field {
+      margin: 0;
+    }
+
+    /* Avaliação RH menor */
+    .hire-rh-compact {
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .hire-rh-compact .page-head {
+      margin-bottom: 8px;
+    }
+
+    .hire-rh-compact #hireHrPendingList {
+      max-height: 280px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .hire-rh-compact .people-empty {
+      padding: 18px 10px;
+    }
+
+    /* Tabela comparativa */
+    #hireAnalyticsTableWrap {
+      margin-bottom: 18px;
+    }
+
+    /* Tablets */
+    @media (max-width: 1280px) {
+      .hire-dashboard-stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 1050px) {
+      .hire-dashboard-filters,
+      .hire-candidate-filters-local {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .hire-dashboard-filters .btn,
+      .hire-candidate-filters-local .btn {
+        grid-column: 1 / -1;
+      }
+    }
+
+    /* Mobile: sidebar vira menu lateral deslizante */
+    @media (max-width: 900px) {
+      :root {
+        --nexo-header-height: 72px;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: var(--nexo-header-height);
+        left: 0;
+        z-index: 1200;
+        height: calc(100vh - var(--nexo-header-height));
+        transform: translateX(-105%);
+        transition: transform .22s ease;
+        box-shadow: 12px 0 30px rgba(15, 23, 42, .12);
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .hire-dashboard-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 650px) {
+      .hire-dashboard-filters,
+      .hire-candidate-filters-local,
+      .hire-dashboard-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .hire-dashboard-head {
+        display: block;
+      }
+    }
+  </style>
 </head>
+
 <body>
-<header class="topbar">
-  <div style="display:flex;align-items:center;gap:12px">
-    <button class="mobile-menu" onclick="toggleSidebar()">☰</button>
-    <div class="brand"><span class="brand-mark">N</span><span class="brand-copy"><strong>NEXO</strong><small>Gestão de Pessoas e Operações</small></span></div>
-  </div>
-  <div class="userbox"><div><strong data-user-name></strong><small data-user-role></small></div><button class="btn btn-danger" onclick="logout()">Sair</button></div>
-</header>
 
-<div class="app">
-  <aside id="portalSidebar" class="sidebar"></aside>
-  <main class="main">
-    <div class="people-shell">
-      <section class="people-section active">
+  <!-- ========================================================
+       CABEÇALHO
+       ======================================================== -->
+  <header class="topbar">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button class="mobile-menu" type="button" onclick="toggleSidebar()">☰</button>
 
-        <div id="hireAdminSetup" class="people-card hidden" style="margin-bottom:18px">
-          <div class="page-head page-head-tight">
-            <div>
-              <h2>Novo acompanhamento</h2>
-              <p class="muted">Encontre primeiro quem foi admitido recentemente. Assim a lista não carrega a empresa inteira de uma vez.</p>
-            </div>
-          </div>
+      <div class="brand">
+        <span class="brand-mark">N</span>
+        <span class="brand-copy">
+          <strong>NEXO</strong>
+          <small>Gestão de Pessoas e Operações</small>
+        </span>
+      </div>
+    </div>
 
-          <div class="notice notice-soft" style="margin-bottom:14px">
-            <strong>BPO / Parceiros de recrutamento:</strong> o cadastro e manutenção ficam em <strong>Estrutura</strong>. Aqui em Novos Contratados você apenas seleciona a origem da contratação.
-          </div>
+    <div class="userbox">
+      <div>
+        <strong data-user-name></strong>
+        <small data-user-role></small>
+      </div>
+      <button class="btn btn-danger" type="button" onclick="logout()">Sair</button>
+    </div>
+  </header>
 
-          <div class="hire-candidate-filters hire-candidate-filters-compact">
-            <div class="field">
-              <label>Período rápido</label>
-              <select id="hireCandidatePreset" class="input" onchange="setCandidateRangeFromPreset(); populateHireCandidates()">
-                <option value="30">Últimos 30 dias</option>
-                <option value="month">Mês atual</option>
-                <option value="previous_month">Mês anterior</option>
-                <option value="year">Ano atual</option>
-                <option value="custom">Personalizado</option>
-              </select>
-            </div>
-            <div class="field"><label>De</label><input id="hireAdmissionStart" class="input" type="date"></div>
-            <div class="field"><label>Até</label><input id="hireAdmissionEnd" class="input" type="date"></div>
-            <div class="field"><label>Nome ou matrícula</label><input id="hireEmployeeSearch" class="input" placeholder="Ex.: WE81... ou nome"></div>
-            <button class="btn btn-light" type="button" onclick="populateHireCandidates()">Filtrar</button>
-          </div>
+  <!-- ========================================================
+       CONTEÚDO
+       ======================================================== -->
+  <div class="app">
 
-          <div id="hireCandidateCount" class="muted" style="margin:12px 0 10px"></div>
+    <!-- A sidebar é preenchida pelo common.js -->
+    <aside id="portalSidebar" class="sidebar"></aside>
 
-          <form id="hireCaseForm" class="grid-2">
-            <div class="field" style="grid-column:1/-1"><label>Colaborador</label><select id="hireEmployee" class="input" required></select></div>
-            <div class="field">
-              <label>Origem da contratação</label>
-              <select id="hireSource" class="input">
-                <option value="bpo">BPO / Parceiro de recrutamento</option>
-                <option value="internal">Time interno</option>
-              </select>
-            </div>
-            <div id="hireBpoField" class="field">
-              <label>BPO responsável</label>
-              <select id="hireBpo" class="input"></select>
-            </div>
-            <div class="field" style="grid-column:1/-1"><label>Observação <span class="muted">(opcional)</span></label><textarea id="hireNotes" class="input" rows="3"></textarea></div>
-            <button class="btn btn-primary" style="grid-column:1/-1">Iniciar acompanhamento</button>
-          </form>
-        </div>
+    <main class="main">
+      <div class="people-shell">
+        <section class="people-section active">
 
-        <div class="people-card" style="margin-bottom:18px">
-          <div class="page-head"><div><h2>Acompanhamentos individuais</h2><p class="muted">Acompanhe cada contratado e as avaliações pendentes.</p></div><button class="btn btn-light" onclick="loadHireCases()">Atualizar</button></div>
-          <div class="table-wrap"><table class="table"><thead><tr><th>Colaborador</th><th>Admissão</th><th>Origem</th><th>Operação</th><th>Líder</th><th>Etapa</th><th>F/NS</th><th>AM</th><th>Ação</th></tr></thead><tbody id="hireCaseRows"></tbody></table></div>
-        </div>
+          <!-- ==================================================
+               1. INDICADORES DE CONTRATAÇÃO — TOPO DA PÁGINA
+               ================================================== -->
+          <div id="hireAnalyticsAdmin" class="hidden hire-dashboard-top">
+            <div class="people-card hire-dashboard-card">
 
-        <div class="people-grid" style="margin-bottom:18px">
-          <div id="hireHrReviewAdmin" class="people-card span-4 hidden hire-compact-panel">
-            <div class="page-head page-head-tight">
-              <div>
-                <h3>Minha avaliação da liderança <span class="badge badge-orange">RH</span></h3>
-                <p class="muted">Avalie o acompanhamento feito pelo líder.</p>
+              <div class="hire-dashboard-head">
+                <div>
+                  <h2>Indicadores de contratação</h2>
+                  <p class="muted">
+                    Atestados aparecem apenas como contexto e não reduzem automaticamente os indicadores.
+                  </p>
+                </div>
               </div>
+
+              <div class="hire-dashboard-filters">
+                <input
+                  id="hireStart"
+                  class="input"
+                  type="date"
+                  aria-label="Data inicial dos indicadores"
+                >
+
+                <input
+                  id="hireEnd"
+                  class="input"
+                  type="date"
+                  aria-label="Data final dos indicadores"
+                >
+
+                <select
+                  id="hireBpoFilter"
+                  class="input"
+                  aria-label="Origem ou parceiro de recrutamento"
+                >
+                  <option value="">Todas as origens</option>
+                </select>
+
+                <button
+                  class="btn btn-primary"
+                  type="button"
+                  onclick="loadHireAnalytics()"
+                >
+                  Atualizar
+                </button>
+              </div>
+
+              <div
+                id="hireOverallCards"
+                class="people-mini-grid hire-dashboard-stats"
+              ></div>
+            </div>
+          </div>
+
+          <!-- ==================================================
+               2. NOVO ACOMPANHAMENTO — SOMENTE ADMIN
+               ================================================== -->
+          <div id="hireAdminSetup" class="people-card hidden hire-new-case">
+
+            <div class="page-head">
+              <div>
+                <h2>Novo acompanhamento</h2>
+                <p class="muted">
+                  Localize primeiro quem foi admitido recentemente. Assim a lista não carrega todos os colaboradores da empresa de uma vez.
+                </p>
+              </div>
+            </div>
+
+            <div class="notice" style="margin-bottom:14px;">
+              <strong>Parceiros de recrutamento (BPO):</strong>
+              o cadastro e manutenção dos parceiros ficam em <strong>Estrutura</strong>.
+              Aqui você apenas informa a origem da contratação.
+            </div>
+
+            <!-- Filtros para localizar novos admitidos -->
+            <div class="hire-candidate-filters-local">
+
+              <div class="field">
+                <label for="hireCandidatePreset">Período rápido</label>
+                <select id="hireCandidatePreset" class="input">
+                  <option value="30">Últimos 30 dias</option>
+                  <option value="month">Mês atual</option>
+                  <option value="previous_month">Mês anterior</option>
+                  <option value="year">Ano atual</option>
+                  <option value="custom">Personalizado</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="hireAdmissionStart">De</label>
+                <input id="hireAdmissionStart" class="input" type="date">
+              </div>
+
+              <div class="field">
+                <label for="hireAdmissionEnd">Até</label>
+                <input id="hireAdmissionEnd" class="input" type="date">
+              </div>
+
+              <div class="field">
+                <label for="hireEmployeeSearch">Nome ou matrícula</label>
+                <input
+                  id="hireEmployeeSearch"
+                  class="input"
+                  type="search"
+                  placeholder="Ex.: WE81... ou nome"
+                  autocomplete="off"
+                >
+              </div>
+
+              <button
+                class="btn btn-light"
+                type="button"
+                onclick="populateHireCandidates()"
+              >
+                Filtrar
+              </button>
+            </div>
+
+            <div id="hireCandidateCount" class="muted" style="margin:10px 0 12px;"></div>
+
+            <!-- Formulário -->
+            <form id="hireCaseForm" class="grid-2">
+
+              <div class="field" style="grid-column:1/-1;">
+                <label for="hireEmployee">Colaborador</label>
+                <select id="hireEmployee" class="input" required>
+                  <option value="">Selecione</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="hireSource">Origem da contratação</label>
+                <select id="hireSource" class="input" required>
+                  <option value="bpo">BPO / Parceiro de recrutamento</option>
+                  <option value="internal">Recrutamento interno</option>
+                </select>
+              </div>
+
+              <div id="hireBpoField" class="field">
+                <label for="hireBpo">BPO responsável</label>
+                <select id="hireBpo" class="input">
+                  <option value="">Selecione</option>
+                </select>
+              </div>
+
+              <div class="field" style="grid-column:1/-1;">
+                <label for="hireNotes">
+                  Observação <span class="muted">(opcional)</span>
+                </label>
+                <textarea id="hireNotes" class="input" rows="3"></textarea>
+              </div>
+
+              <button
+                class="btn btn-primary"
+                type="submit"
+                style="grid-column:1/-1;"
+              >
+                Iniciar acompanhamento
+              </button>
+            </form>
+          </div>
+
+          <!-- ==================================================
+               3. ACOMPANHAMENTOS INDIVIDUAIS
+               Admin e Líder visualizam conforme permissões/RLS
+               ================================================== -->
+          <div class="people-card" style="margin-bottom:18px;">
+
+            <div class="page-head">
+              <div>
+                <h2>Acompanhamentos individuais</h2>
+                <p class="muted">
+                  Acompanhe cada novo contratado e as avaliações D+7, D+30, D+60 e D+90.
+                </p>
+              </div>
+
+              <button
+                class="btn btn-light"
+                type="button"
+                onclick="loadHireCases()"
+              >
+                Atualizar
+              </button>
+            </div>
+
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Colaborador</th>
+                    <th>Admissão</th>
+                    <th>Origem</th>
+                    <th>Operação</th>
+                    <th>Líder</th>
+                    <th>Etapa</th>
+                    <th>F/NS</th>
+                    <th>AM</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="hireCaseRows"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ==================================================
+               4. MINHA AVALIAÇÃO DA LIDERANÇA — RH / ADMIN
+               ================================================== -->
+          <div
+            id="hireHrReviewAdmin"
+            class="people-card hidden hire-rh-compact"
+          >
+            <div class="page-head">
+              <div>
+                <h3 style="margin-bottom:4px;">
+                  Minha avaliação da liderança
+                  <span class="badge badge-orange">RH</span>
+                </h3>
+                <p class="muted" style="margin:0;">
+                  Avalie prazos, feedback, comunicação, registros e acompanhamento realizado pelo líder.
+                </p>
+              </div>
+
               <div class="people-mini-stat compact">
                 <span>Pendentes</span>
                 <strong id="hireHrPendingCount">0</strong>
               </div>
             </div>
-            <div id="hireHrPendingList" class="hire-compact-list"></div>
+
+            <div id="hireHrPendingList"></div>
           </div>
 
-          <div id="hireAnalyticsAdmin" class="span-8 hidden">
-            <div class="people-card hire-analytics-card">
-              <div class="page-head page-head-tight">
-                <div>
-                  <h3>Indicadores de contratação</h3>
-                  <p class="muted">Atestados aparecem apenas como contexto e não reduzem automaticamente os indicadores.</p>
-                </div>
+          <!-- ==================================================
+               5. COMPARATIVO POR ORIGEM / PARCEIRO
+               ================================================== -->
+          <div
+            id="hireAnalyticsTableWrap"
+            class="people-card hidden"
+          >
+            <div class="page-head">
+              <div>
+                <h2>Comparativo por origem / parceiro</h2>
+                <p class="muted">
+                  Compare recrutamento interno e parceiros de recrutamento com base nos acompanhamentos realizados.
+                </p>
               </div>
-              <div class="hire-analytics-toolbar">
-                <input id="hireStart" class="input" type="date">
-                <input id="hireEnd" class="input" type="date">
-                <select id="hireBpoFilter" class="input"><option value="">Todas as origens</option></select>
-                <button class="btn btn-primary" onclick="loadHireAnalytics()">Atualizar</button>
-              </div>
-              <div id="hireOverallCards" class="people-mini-grid hire-overall-cards" style="margin:14px 0 0"></div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Origem / parceiro</th>
+                    <th>Contratados</th>
+                    <th>Recrutamento</th>
+                    <th>Adaptação</th>
+                    <th>Onboarding</th>
+                    <th>Liderança</th>
+                    <th>Assiduidade</th>
+                    <th>Atestados</th>
+                    <th>Retenção D+30</th>
+                    <th>Retenção D+90</th>
+                  </tr>
+                </thead>
+                <tbody id="hireAnalyticsRows"></tbody>
+              </table>
             </div>
           </div>
+
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================================================
+       MODAL
+       ======================================================== -->
+  <div id="peopleModal" class="people-modal hidden">
+    <div class="people-modal-card">
+
+      <div class="people-modal-head">
+        <div>
+          <h2 id="peopleModalTitle"></h2>
+          <p id="peopleModalSubtitle" class="muted"></p>
         </div>
 
-        <div id="hireAnalyticsTableWrap" class="people-card hidden">
-          <h3>Comparativo por origem / parceiro</h3>
-          <div class="table-wrap"><table class="table"><thead><tr><th>Origem / parceiro</th><th>Contratados</th><th>Recrutamento</th><th>Adaptação</th><th>Onboarding</th><th>Liderança</th><th>Assiduidade</th><th>Atestados</th><th>Retenção D+30</th><th>Retenção D+90</th></tr></thead><tbody id="hireAnalyticsRows"></tbody></table></div>
-        </div>
+        <button
+          class="btn btn-light"
+          type="button"
+          onclick="closePeopleModal()"
+        >
+          Fechar
+        </button>
+      </div>
 
-      </section>
+      <div id="peopleModalBody"></div>
     </div>
-  </main>
-</div>
+  </div>
 
-<div id="peopleModal" class="people-modal hidden"><div class="people-modal-card"><div class="people-modal-head"><div><h2 id="peopleModalTitle"></h2><p id="peopleModalSubtitle" class="muted"></p></div><button class="btn btn-light" onclick="closePeopleModal()">Fechar</button></div><div id="peopleModalBody"></div></div></div>
-<script src="config.js"></script><script src="common.js"></script><script src="new-hires-admin.js"></script>
-</body></html>
+  <!-- ========================================================
+       SCRIPTS
+       ======================================================== -->
+  <script src="config.js"></script>
+  <script src="common.js"></script>
+  <script src="new-hires-admin.js"></script>
+
+</body>
+</html>
