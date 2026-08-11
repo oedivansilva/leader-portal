@@ -95,20 +95,26 @@ async function loadHireBase() {
 }
 
 function renderBpoList() {
-  if (!window.bpoList) return
-  bpoList.innerHTML = hireBpos.map(b=>`<div class="people-task"><div><strong>${escapeHTML(b.name)}</strong></div><span class="badge ${b.active?'badge-green':'badge-gray'}">${b.active?'Ativa':'Inativa'}</span></div>`).join('') || '<div class="people-empty">Nenhuma BPO cadastrada.</div>'
+  const bpoListEl = document.getElementById('bpoList')
+  if (!bpoListEl) return
+  bpoListEl.innerHTML = hireBpos.map(b=>`<div class="people-task"><div><strong>${escapeHTML(b.name)}</strong></div><span class="badge ${b.active?'badge-green':'badge-gray'}">${b.active?'Ativa':'Inativa'}</span></div>`).join('') || '<div class="people-empty">Nenhuma BPO cadastrada.</div>'
 }
 
-bpoForm?.addEventListener('submit', async event => {
-  event.preventDefault()
-  const name = bpoName.value.trim()
-  if (!name) return
-  const { error } = await db.from('people_hire_bpos').insert({name})
-  if (error) return alert(error.message)
-  event.target.reset()
-  await loadHireBase()
-  alert('BPO cadastrada.')
-})
+const bpoFormEl = document.getElementById('bpoForm')
+const bpoNameEl = document.getElementById('bpoName')
+
+if (bpoFormEl && bpoNameEl) {
+  bpoFormEl.addEventListener('submit', async event => {
+    event.preventDefault()
+    const name = bpoNameEl.value.trim()
+    if (!name) return
+    const { error } = await db.from('people_hire_bpos').insert({name})
+    if (error) return alert(error.message)
+    event.target.reset()
+    await loadHireBase()
+    alert('BPO cadastrada.')
+  })
+}
 
 hireCaseForm?.addEventListener('submit', async event => {
   event.preventDefault()
@@ -251,7 +257,7 @@ async function loadHireAnalytics() {
     <div class="people-mini-stat"><span>Liderança</span><strong>${pct(weighted('leadership_pct'))}</strong></div>
     <div class="people-mini-stat"><span>Assiduidade F/NS</span><strong>${pct(weighted('attendance_pct'))}</strong></div>`
   hireAnalyticsRows.innerHTML = rows.map(r=>`<tr><td><strong>${r.bpo_id?'BPO':'Interno'}</strong><br><small>${escapeHTML(r.bpo_name)}</small></td><td>${r.hires}</td><td>${pct(r.recruitment_pct)}</td><td>${pct(r.adaptation_pct)}</td><td>${pct(r.onboarding_pct)}</td><td>${pct(r.leadership_pct)}</td><td>${pct(r.attendance_pct)}</td><td>${r.medical_certificates||0}</td><td>${pct(r.retention_d30)}</td><td>${pct(r.retention_d90)}</td></tr>`).join('') || '<tr><td colspan="10" class="empty">Sem dados no período.</td></tr>'
-  hireAnalyticsTableWrap?.classList.remove('hidden')
+  document.getElementById('hireAnalyticsTableWrap')?.classList.remove('hidden')
 }
 window.loadHireAnalytics = loadHireAnalytics
 
@@ -367,7 +373,7 @@ getSessionContext().then(async context => {
     hireAdminSetup.classList.remove('hidden')
     hireAnalyticsAdmin.classList.remove('hidden')
     hireHrReviewAdmin.classList.remove('hidden')
-    hireAnalyticsTableWrap?.classList.remove('hidden')
+    document.getElementById('hireAnalyticsTableWrap')?.classList.remove('hidden')
     setCandidateRangeFromPreset()
     hireCandidatePreset.addEventListener('change',()=>{setCandidateRangeFromPreset();populateHireCandidates()})
     hireEmployeeSearch.addEventListener('input',()=>populateHireCandidates())
