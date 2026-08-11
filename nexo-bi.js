@@ -129,6 +129,60 @@
     return `<div class="table-wrap"><table class="nexo-bi-table"><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${cell==null?'—':cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
   }
 
+
+  // Tradução humana dos indicadores: o gestor entende o número sem precisar
+  // conhecer a fórmula antes. O detalhamento técnico continua disponível no clique.
+  function setHumanSummary(card,text){
+    if(!card) return
+    let summary=card.querySelector('.nexo-bi-human-summary')
+    if(!summary){
+      summary=document.createElement('div')
+      summary.className='nexo-bi-human-summary'
+      const strong=card.querySelector('strong')
+      if(strong) strong.insertAdjacentElement('afterend',summary)
+      else card.appendChild(summary)
+    }
+    summary.textContent=text||''
+    summary.classList.toggle('hidden',!text)
+  }
+
+  function explainBox(text,formula=''){
+    return `<div class="nexo-bi-explainer"><div class="nexo-bi-explainer-label">Em uma frase</div><div class="nexo-bi-explainer-text">${esc(text)}</div>${formula?`<div class="nexo-bi-formula">${esc(formula)}</div>`:''}</div>`
+  }
+
+  function avgFiveFromPercent(value){
+    const n=Number(value)
+    return Number.isFinite(n)?(n/20).toFixed(2).replace('.',','):'—'
+  }
+
+  function overviewHumanSummary(id,s){
+    const absTotal=s.absences?.length||0
+    const planned=s.planned||0
+    const avgHead=Number(s.averageHead||0).toFixed(1).replace('.',',')
+    const admissions=s.admitted?.length||0
+    const terminations=s.terminated?.length||0
+    const value=document.getElementById(id)?.textContent||'—'
+    const map={
+      metricAbs: planned ? `${absTotal} ausência${absTotal===1?'':'s'} em ${planned.toLocaleString('pt-BR')} jornadas previstas no mês.` : 'Sem jornadas previstas suficientes para calcular o ABS.',
+      metricJustified: `${s.justifiedCount||0} ausência${Number(s.justifiedCount||0)===1?'':'s'} justificada${Number(s.justifiedCount||0)===1?'':'s'} no mês.`,
+      metricUnjustified: `${s.unjustifiedCount||0} falta${Number(s.unjustifiedCount||0)===1?'':'s'}/NS no mês.`,
+      metricWarnings: `${s.warnings?.length||0} advertência${(s.warnings?.length||0)===1?'':'s'} registrada${(s.warnings?.length||0)===1?'':'s'} no mês.`,
+      metricSuspensions: `${s.suspensions?.length||0} ${(s.suspensions?.length||0)===1?'suspensão registrada':'suspensões registradas'} no mês.`,
+      metricApplicationTime: `Tempo médio entre a ocorrência e a aplicação das medidas concluídas: ${value}.`,
+      metricOldest: `Média usando a ocorrência mais antiga de cada medida aplicada: ${value}.`,
+      metricNewest: `Média usando a ocorrência mais recente de cada medida aplicada: ${value}.`,
+      metricOccurrenceAverage: `Média do tempo das ocorrências que compõem as medidas aplicadas: ${value}.`,
+      metricActiveHeadcount: `${s.headEnd||0} colaborador${Number(s.headEnd||0)===1?'':'es'} ativo${Number(s.headEnd||0)===1?'':'s'} no último dia do mês.`,
+      metricAdmissions: `${admissions} admissão${admissions===1?'':'ões'} no mês.`,
+      metricTerminations: `${terminations} desligamento${terminations===1?'':'s'} no mês.`,
+      metricGeneralTurnover: `${admissions} admissão${admissions===1?'':'ões'} + ${terminations} desligamento${terminations===1?'':'s'} sobre quadro médio de ${avgHead}.`,
+      metricTurnover: `${terminations} desligamento${terminations===1?'':'s'} sobre quadro médio de ${avgHead}.`,
+      metricVoluntary: `${s.voluntary||0} desligamento${Number(s.voluntary||0)===1?'':'s'} voluntário${Number(s.voluntary||0)===1?'':'s'} no mês.`,
+      metricInvoluntary: `${s.involuntary||0} desligamento${Number(s.involuntary||0)===1?'':'s'} involuntário${Number(s.involuntary||0)===1?'':'s'} no mês.`
+    }
+    return map[id]||''
+  }
+
   // ================================================================
   // VISÃO GERAL
   // ================================================================
@@ -168,11 +222,12 @@
     if(topAbs) items.push(`Maior volume de ausências no filtro: ${topAbs[0]} (${topAbs[1]} registro(s)).`)
     if(topLeader) items.push(`Maior volume de medidas disciplinares por liderança: ${topLeader.label} (${topLeader.value}).`)
     if(state.averageHead) items.push(`Quadro médio no período: ${Number(state.averageHead).toFixed(1)} colaborador(es).`)
-    if(state.planned) items.push(`ABS usa ${state.absences?.length||0} ausência(s) sobre ${state.planned} dia(s) planejado(s).`)
+    if(state.planned) items.push(`ABS: ${state.absences?.length||0} ausência(s) em ${state.planned.toLocaleString('pt-BR')} jornadas previstas no mês.`)
     insights.innerHTML=`<h4>Insights do período</h4><div class="nexo-bi-insight-list">${items.map(x=>`<div class="nexo-bi-insight">${esc(x)}</div>`).join('')||'<div class="muted">Sem dados suficientes para gerar insights.</div>'}</div>`
 
     Object.entries(overviewMetricMap).forEach(([id,[label,type]])=>{
       const strong=document.getElementById(id); const card=strong?.closest('.stat')
+      setHumanSummary(card,overviewHumanSummary(id,state))
       BI.makeClickable(card,()=>BI.openOverviewDetail(type,label,id))
     })
   }
@@ -182,25 +237,94 @@
     const value=document.getElementById(id)?.textContent||'—'
     const subtitle=`${s.selectedMonth||''}${s.operationLabel?' · '+s.operationLabel:''}`
     let html=''
+
     if(type==='abs'){
-      const byOp=Object.entries(s.absenceByOperation||{}).sort((a,b)=>b[1]-a[1]).map(([name,count])=>[esc(name),count])
+      const absTotal=s.absences?.length||0
+      const other=s.otherAbsenceCount||0
+      const opNames=[...new Set([...Object.keys(s.plannedByOperation||{}),...Object.keys(s.absenceByOperation||{})])]
+      const byOp=opNames.map(name=>{
+        const journeys=Number(s.plannedByOperation?.[name]||0)
+        const abs=Number(s.absenceByOperation?.[name]||0)
+        const employees=Number(s.plannedEmployeeCountByOperation?.[name]||0)
+        const rate=journeys?`${(abs/journeys*100).toFixed(2).replace('.',',')}%`:'—'
+        return [esc(name),employees,journeys.toLocaleString('pt-BR'),abs,rate]
+      }).sort((a,b)=>Number(String(b[3]).replace(/\D/g,''))-Number(String(a[3]).replace(/\D/g,'')))
       const byScale=(s.scaleAbsenceRows||[]).map(r=>[esc(r.label),r.absences,r.medicalCertificates])
-      html=kpis([['Indicador',value],['Dias planejados',s.planned||0],['Justificadas',s.justifiedCount||0],['Injustificadas',s.unjustifiedCount||0]])+
-        `<div class="nexo-bi-note">O ABS é calculado com base nas ausências registradas no período e nos dias planejados conforme a escala vigente. AM/FJ aparecem como justificadas; F/NS como injustificadas.</div>`+
-        `<div class="nexo-bi-section"><h3>Por operação</h3>${simpleTable(['Operação','Ausências'],byOp)}</div>`+
+
+      let human=''
+      let formula=''
+      if(id==='metricAbs'){
+        human=s.planned
+          ? `${absTotal} ausência${absTotal===1?'':'s'} em ${Number(s.planned).toLocaleString('pt-BR')} jornadas previstas no mês resultam em ${value}.`
+          : 'Não há jornadas previstas suficientes para calcular o ABS deste filtro.'
+        formula=s.planned ? `${absTotal} ÷ ${Number(s.planned).toLocaleString('pt-BR')} × 100 = ${value}` : ''
+      } else if(id==='metricJustified'){
+        human=`Foram registradas ${s.justifiedCount||0} ausência${Number(s.justifiedCount||0)===1?'':'s'} justificada${Number(s.justifiedCount||0)===1?'':'s'} no mês selecionado.`
+        formula='AM/FJ são exibidos como ausências justificadas.'
+      } else {
+        human=`Foram registradas ${s.unjustifiedCount||0} falta${Number(s.unjustifiedCount||0)===1?'':'s'}/NS sem justificativa no mês selecionado.`
+        formula='F/NS são exibidos como ausências injustificadas.'
+      }
+
+      html=explainBox(human,formula)+
+        kpis([
+          ['Indicador',value],
+          ['Jornadas previstas no mês',Number(s.planned||0).toLocaleString('pt-BR')],
+          ['Colaboradores considerados',s.consideredEmployees||0],
+          ['Ausências consideradas',absTotal]
+        ])+
+        `<div class="nexo-bi-note"><strong>O que significa “jornadas previstas”?</strong><br>É a soma dos dias em que cada colaborador deveria trabalhar dentro do mês, conforme a escala vigente. Não são ${Number(s.planned||0).toLocaleString('pt-BR')} dias corridos: são jornadas acumuladas do efetivo considerado.${other?` Há também ${other} ausência(s) classificada(s) em outros códigos de ausência que compõem o ABS total.`:''}</div>`+
+        `<div class="nexo-bi-section"><h3>Composição por operação</h3>${simpleTable(['Operação','Colaboradores','Jornadas previstas','Ausências','ABS'],byOp)}</div>`+
         `<div class="nexo-bi-section"><h3>Por turno / escala</h3>${simpleTable(['Turno / escala','F/NS','AM'],byScale)}</div>`
     } else if(type==='discipline'){
-      const byRegion=(s.regions||[]).map(r=>[esc(r.label),r.value]);const byLeader=(s.leaders||[]).map(r=>[esc(r.label),r.value])
-      html=kpis([['Indicador',value],['Advertências',s.warnings?.length||0],['Suspensões',s.suspensions?.length||0],['Total de medidas',(s.rows||[]).length]])+
+      const byRegion=(s.regions||[]).map(r=>[esc(r.label),r.value])
+      const byLeader=(s.leaders||[]).map(r=>[esc(r.label),r.value])
+      const isWarning=id==='metricWarnings'
+      const count=isWarning?(s.warnings?.length||0):(s.suspensions?.length||0)
+      const human=`${count} ${isWarning?(count===1?'advertência foi registrada':'advertências foram registradas'):(count===1?'suspensão foi registrada':'suspensões foram registradas')} no mês selecionado.`
+      html=explainBox(human,'Contagem das medidas disciplinares emitidas no período selecionado.')+
+        kpis([['Indicador',value],['Advertências',s.warnings?.length||0],['Suspensões',s.suspensions?.length||0],['Total de medidas',(s.rows||[]).length]])+
         `<div class="nexo-bi-section"><h3>Por região</h3>${simpleTable(['Região','Medidas'],byRegion)}</div>`+
         `<div class="nexo-bi-section"><h3>Por liderança</h3>${simpleTable(['Liderança','Medidas'],byLeader)}</div>`
     } else if(type==='time'){
-      html=kpis([['Indicador',value],['Aplicadas',s.applied?.length||0],['Desde a mais antiga',s.timeOldest||'—'],['Desde a mais recente',s.timeNewest||'—']])+
-        `<div class="nexo-bi-note">Os tempos usam as solicitações aplicadas no período. O NEXO compara a data de aplicação com as datas das ocorrências registradas.</div>`
+      const descriptions={
+        metricApplicationTime:'tempo médio entre as ocorrências registradas e a aplicação da medida',
+        metricOldest:'tempo médio considerando a ocorrência mais antiga de cada medida',
+        metricNewest:'tempo médio considerando a ocorrência mais recente de cada medida',
+        metricOccurrenceAverage:'tempo médio das ocorrências que compõem as medidas aplicadas'
+      }
+      html=explainBox(`O indicador mostra ${descriptions[id]||'o tempo médio de aplicação'}: ${value}.`,'São consideradas somente medidas aplicadas dentro do período selecionado.')+
+        kpis([['Indicador',value],['Medidas aplicadas',s.applied?.length||0],['Desde a mais antiga',s.timeOldest||'—'],['Desde a mais recente',s.timeNewest||'—']])+
+        `<div class="nexo-bi-note">O NEXO compara a data de aplicação com as datas das ocorrências registradas. Assim, o gestor consegue entender se a aplicação ocorreu rapidamente ou se houve demora no processo.</div>`
     } else {
+      const admissions=s.admitted?.length||0
+      const terminations=s.terminated?.length||0
+      const avg=Number(s.averageHead||0)
+      const avgText=avg.toFixed(1).replace('.',',')
       const rows=(s.movements||[]).map(m=>[esc(m.type),esc(m.employee?.registration||'—'),esc(m.employee?.full_name||'—'),window.formatDate?formatDate(m.date):m.date])
-      html=kpis([['Indicador',value],['Quadro inicial',s.headStart||0],['Quadro final',s.headEnd||0],['Quadro médio',Number(s.averageHead||0).toFixed(1)]])+
-        `<div class="nexo-bi-note">Turnover de desligamentos = desligamentos ÷ quadro médio. Turnover geral considera a média entre admissões e desligamentos no numerador.</div>`+
+      let human=''
+      let formula=''
+      if(id==='metricGeneralTurnover'){
+        human=`${admissions} admissão${admissions===1?'':'ões'} e ${terminations} desligamento${terminations===1?'':'s'} foram comparados com um quadro médio de ${avgText} colaborador(es), resultando em ${value}.`
+        formula=avg?`(( ${admissions} + ${terminations} ) ÷ 2) ÷ ${avgText} × 100 = ${value}`:''
+      } else if(id==='metricTurnover'){
+        human=`${terminations} desligamento${terminations===1?'':'s'} sobre um quadro médio de ${avgText} colaborador(es) resultam em ${value}.`
+        formula=avg?`${terminations} ÷ ${avgText} × 100 = ${value}`:''
+      } else if(id==='metricActiveHeadcount'){
+        human=`O mês terminou com ${s.headEnd||0} colaborador(es) ativo(s) no filtro selecionado.`
+      } else if(id==='metricAdmissions'){
+        human=`Foram admitidos ${admissions} colaborador(es) durante o mês selecionado.`
+      } else if(id==='metricTerminations'){
+        human=`Foram desligados ${terminations} colaborador(es) durante o mês selecionado.`
+      } else if(id==='metricVoluntary'){
+        human=`Dos ${terminations} desligamentos do mês, ${s.voluntary||0} foram classificados como voluntários.`
+      } else if(id==='metricInvoluntary'){
+        human=`Dos ${terminations} desligamentos do mês, ${s.involuntary||0} foram classificados como involuntários.`
+      } else {
+        human=`O indicador considera as movimentações registradas no mês selecionado.`
+      }
+      html=explainBox(human,formula)+
+        kpis([['Indicador',value],['Quadro inicial',s.headStart||0],['Quadro final',s.headEnd||0],['Quadro médio',avgText]])+
         `<div class="nexo-bi-section"><h3>Movimentações consideradas</h3>${simpleTable(['Movimentação','MAT','Colaborador','Data'],rows)}</div>`
     }
     BI.openModal(label,subtitle,html)
@@ -247,8 +371,17 @@
     const summary=detail.summary||{}
     const container=document.getElementById('hireOverallCards')
     if(container){
-      const defs=[['hires','Contratados',summary.hires??0],['recruitment','Qualidade do recrutamento',pct(summary.recruitment_pct)],['adaptation','Adaptação',pct(summary.adaptation_pct)],['onboarding','Onboarding',pct(summary.onboarding_pct)],['leadership','Liderança',pct(summary.leadership_pct)],['attendance','Assiduidade F/NS',pct(summary.attendance_pct)]]
-      container.innerHTML=defs.map(([key,label,value])=>`<div class="people-mini-stat nexo-bi-clickable" data-bi-hire="${key}" tabindex="0"><span>${label}</span><strong>${value}</strong></div>`).join('')
+      const totalPlanned=(detail.cases||[]).reduce((sum,c)=>sum+Number(c.planned_days||0),0)
+      const totalFn=(summary.f_count||0)+(summary.ns_count||0)
+      const defs=[
+        ['hires','Contratados',summary.hires??0,`${summary.hires??0} pessoa(s) no filtro atual.`],
+        ['recruitment','Qualidade do recrutamento',pct(summary.recruitment_pct),summary.recruitment_pct==null?'Sem respostas suficientes.':`Média ${avgFiveFromPercent(summary.recruitment_pct)}/5 nas respostas dos colaboradores sobre o recrutamento.`],
+        ['adaptation','Adaptação',pct(summary.adaptation_pct),summary.adaptation_pct==null?'Sem avaliações suficientes.':`Média ${avgFiveFromPercent(summary.adaptation_pct)}/5 nas avaliações feitas pela liderança.`],
+        ['onboarding','Onboarding',pct(summary.onboarding_pct),summary.onboarding_pct==null?'Sem respostas suficientes.':`Média ${avgFiveFromPercent(summary.onboarding_pct)}/5 nas respostas dos colaboradores sobre integração e início da jornada.`],
+        ['leadership','Liderança',pct(summary.leadership_pct),summary.leadership_pct==null?'Sem avaliações suficientes.':`Média ${avgFiveFromPercent(summary.leadership_pct)}/5 combinando percepção dos colaboradores e avaliação do RH.`],
+        ['attendance','Assiduidade F/NS',pct(summary.attendance_pct),`${totalFn} F/NS em ${totalPlanned.toLocaleString('pt-BR')} jornadas previstas no acompanhamento.`]
+      ]
+      container.innerHTML=defs.map(([key,label,value,human])=>`<div class="people-mini-stat nexo-bi-clickable" data-bi-hire="${key}" tabindex="0"><span>${label}</span><strong>${value}</strong><div class="nexo-bi-human-summary">${esc(human)}</div></div>`).join('')
       container.querySelectorAll('[data-bi-hire]').forEach(el=>{el.onclick=()=>BI.openHireDetail(el.dataset.biHire);el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();BI.openHireDetail(el.dataset.biHire)}}})
     }
 
@@ -277,20 +410,51 @@
   BI.openHireDetail = function(metric){
     const d=NEXO_BI_STATE.newHires||{}, meta=hireMetricMeta[metric]||hireMetricMeta.hires, s=d.summary||{}
     const value=metric==='hires'?s.hires:metric==='attendance'?pct(s.attendance_pct):pct(s[`${metric}_pct`])
+
     if(metric==='hires'){
       const rows=(d.cases||[]).map(c=>[esc(c.employee_name),esc(c.registration),esc(c.operation_name),esc(c.leader_name||'—'),esc(c.source_name||'Interno'),window.formatDate?formatDate(c.admission_date):c.admission_date])
-      return BI.openModal(meta.label,`Fonte: ${meta.source}`,kpis([['Total',value],['BPO',s.bpo_hires||0],['Interno',s.internal_hires||0],['Ativos no acompanhamento',s.tracking_hires||0]])+`<div class="nexo-bi-section"><h3>Colaboradores considerados</h3>${simpleTable(['Colaborador','MAT','Operação','Líder','Origem','Admissão'],rows)}</div>`)
+      const human=`${s.hires||0} novo(s) contratado(s) estão dentro do filtro atual; ${s.bpo_hires||0} vieram de BPO e ${s.internal_hires||0} de recrutamento interno.`
+      return BI.openModal(meta.label,`Fonte: ${meta.source}`,
+        explainBox(human,'Contagem dos acompanhamentos de novos contratados que atendem aos filtros selecionados.')+
+        kpis([['Total',value],['BPO',s.bpo_hires||0],['Interno',s.internal_hires||0],['Ativos no acompanhamento',s.tracking_hires||0]])+
+        `<div class="nexo-bi-section"><h3>Colaboradores considerados</h3>${simpleTable(['Colaborador','MAT','Operação','Líder','Origem','Admissão'],rows)}</div>`)
     }
+
     if(metric==='attendance'){
       const rows=(d.cases||[]).map(c=>[esc(c.employee_name),c.planned_days??0,c.f_count??0,c.ns_count??0,c.am_count??0,pct(c.attendance_pct)])
-      return BI.openModal(meta.label,`Fonte: ${meta.source}`,kpis([['Indicador',value],['Faltas F',s.f_count||0],['No-show NS',s.ns_count||0],['Atestados AM',s.medical_certificates||0]])+`<div class="nexo-bi-note">F e NS reduzem a assiduidade. AM é apresentado separadamente e não reduz automaticamente a nota do contratado ou da BPO.</div><div class="nexo-bi-section"><h3>Por colaborador</h3>${simpleTable(['Colaborador','Dias previstos','F','NS','AM','Assiduidade'],rows)}</div>`)
+      const planned=(d.cases||[]).reduce((sum,c)=>sum+Number(c.planned_days||0),0)
+      const f=Number(s.f_count||0), ns=Number(s.ns_count||0), fn=f+ns
+      const human=`Foram registrados ${fn} F/NS em ${planned.toLocaleString('pt-BR')} jornadas previstas nos acompanhamentos do filtro. O indicador mostrado (${value}) é a média das taxas individuais de assiduidade.`
+      return BI.openModal(meta.label,`Fonte: ${meta.source}`,
+        explainBox(human,'Para cada contratado: (jornadas previstas − F − NS) ÷ jornadas previstas × 100. O painel exibe a média dessas taxas individuais.')+
+        kpis([['Indicador',value],['Jornadas previstas',planned.toLocaleString('pt-BR')],['Faltas F',f],['No-show NS',ns]])+
+        `<div class="nexo-bi-note">Atestados AM (${s.medical_certificates||0}) aparecem apenas como contexto e não reduzem automaticamente a assiduidade nem a nota da contratação.</div>`+
+        `<div class="nexo-bi-section"><h3>Por colaborador</h3>${simpleTable(['Colaborador','Jornadas previstas','F','NS','AM','Assiduidade'],rows)}</div>`)
     }
+
     const qs=(d.questions||[]).filter(q=>meta.prefixes.some(p=>String(q.question_key||'').startsWith(p)))
     const evals=(d.evaluations||[]).filter(e=>meta.reviewers?.includes(e.reviewer_type)).filter(e=>Object.keys(e.answers||{}).some(k=>meta.prefixes.some(p=>k.startsWith(p))))
     const qrows=qs.map(q=>[esc(q.question_label),`<span class="nexo-bi-score-badge">${pct(q.average_pct)}</span>`,q.response_count||0,esc(q.respondent_label||'')])
     const erows=evals.map(e=>[esc(e.employee_name),`D+${e.checkpoint_day}`,esc(e.reviewer_name||e.respondent_label||'—'),esc(e.respondent_label||''),`<span class="nexo-bi-score-badge">${pct(e.metric_pct?.[metric])}</span>`])
     const comments=evals.filter(e=>e.comment).map(e=>`<div class="nexo-bi-comment"><strong>${esc(e.employee_name)} · D+${e.checkpoint_day}</strong><div>${esc(e.comment)}</div><div class="nexo-bi-source">${esc(e.respondent_label)}: ${esc(e.reviewer_name||'—')}</div></div>`).join('')
-    BI.openModal(meta.label,`Fonte principal: ${meta.source}`,kpis([['Indicador',value],['Avaliações consideradas',evals.length],['Perguntas com resposta',qs.length],['Colaboradores',new Set(evals.map(e=>e.employee_id)).size]])+`<div class="nexo-bi-note">A nota é formada pelas respostas de 1 a 5 das perguntas que pertencem a esta dimensão. Cada resposta é convertida para percentual (nota ÷ 5 × 100) e agregada no filtro selecionado.</div><div class="nexo-bi-section"><h3>Resultado por pergunta</h3>${simpleTable(['Pergunta','Média','Respostas','Quem responde'],qrows)}</div><div class="nexo-bi-section"><h3>Avaliações que compõem o indicador</h3>${simpleTable(['Colaborador','Etapa','Quem respondeu','Perfil','Nota desta dimensão'],erows)}</div>${comments?`<div class="nexo-bi-section"><h3>Comentários registrados</h3>${comments}</div>`:''}`)
+    const percentValue=Number(s[`${metric}_pct`])
+    const avg=avgFiveFromPercent(percentValue)
+    const sourceText={
+      recruitment:'novos contratados sobre o processo de recrutamento',
+      adaptation:'líderes sobre a adaptação dos novos contratados',
+      onboarding:'novos contratados sobre onboarding e início da jornada',
+      leadership:'colaboradores e RH sobre a atuação da liderança'
+    }[metric]||meta.source
+    const human=Number.isFinite(percentValue)
+      ? `A média das respostas foi ${avg}/5, equivalente a ${value}, com base nas avaliações de ${sourceText}.`
+      : `Ainda não há respostas suficientes para formar este indicador no filtro atual.`
+
+    BI.openModal(meta.label,`Fonte principal: ${meta.source}`,
+      explainBox(human,'Cada resposta usa escala de 1 a 5. A média é convertida em percentual: média ÷ 5 × 100.')+
+      kpis([['Indicador',value],['Média equivalente',`${avg}/5`],['Avaliações consideradas',evals.length],['Colaboradores',new Set(evals.map(e=>e.employee_id)).size]])+
+      `<div class="nexo-bi-section"><h3>Resultado por pergunta</h3>${simpleTable(['Pergunta','Média','Respostas','Quem responde'],qrows)}</div>`+
+      `<div class="nexo-bi-section"><h3>Avaliações que compõem o indicador</h3>${simpleTable(['Colaborador','Etapa','Quem respondeu','Perfil','Nota desta dimensão'],erows)}</div>`+
+      `${comments?`<div class="nexo-bi-section"><h3>Comentários registrados</h3>${comments}</div>`:''}`)
   }
 
   // ================================================================
@@ -301,12 +465,67 @@
     if(!state) return
     const section=document.getElementById(moduleKey)
     if(!section) return
-    const cards=section.querySelectorAll('.people-mini-stat')
-    cards.forEach((card,index)=>BI.makeClickable(card,()=>BI.openPeopleDetail(moduleKey,index)))
+
+    if(moduleKey==='pdi' && !section.querySelector('.people-mini-grid')){
+      const pdis=state.pdis||[]
+      const actions=pdis.flatMap(p=>p.people_pdi_actions||[])
+      const summary=document.createElement('div')
+      summary.id='peopleBiSummary-pdi'
+      summary.className='people-mini-grid'
+      summary.style.margin='0 0 16px'
+      summary.innerHTML=`<div class="people-mini-stat"><span>PDIs</span><strong>${pdis.length}</strong></div><div class="people-mini-stat"><span>Ativos</span><strong>${pdis.filter(p=>p.status!=='completed').length}</strong></div><div class="people-mini-stat"><span>Concluídos</span><strong>${pdis.filter(p=>p.status==='completed').length}</strong></div><div class="people-mini-stat"><span>Ações</span><strong>${actions.length}</strong></div>`
+      section.querySelector('.page-head')?.insertAdjacentElement('afterend',summary)
+    }
+
+    const cards=[...section.querySelectorAll('.people-mini-stat')]
+    const human=[]
+    if(moduleKey==='mood'){
+      human.push(
+        `${state.total||0} check-in(s) de humor no período.`,
+        state.total?`Média ${Number(state.average||0).toFixed(2).replace('.',',')}/5 em ${state.total} resposta(s).`:'Sem respostas no período.',
+        `${state.positive||0} de ${state.total||0} resposta(s) ficaram entre 4 e 5.`,
+        `${state.critical||0} de ${state.total||0} resposta(s) ficaram entre 1 e 2.`
+      )
+    } else if(moduleKey==='climate'){
+      const p=state.participation||{}
+      human.push(
+        `${p.invited||0} colaborador(es) foram convidados.`,
+        `${p.responded||0} de ${p.invited||0} convidado(s) responderam.`,
+        `${p.responded||0} resposta(s) de ${p.invited||0} convite(s) = ${pct(p.participation_pct||0)} de participação.`,
+        state.anonymous?'As respostas desta pesquisa são anônimas.':'As respostas desta pesquisa são identificadas.'
+      )
+    } else if(moduleKey==='performance'){
+      human.push(
+        `${state.total||0} avaliação(ões) fazem parte do ciclo.`,
+        `${state.selfDone||0} de ${state.total||0} autoavaliação(ões) foram concluídas.`,
+        `${state.mgrDone||0} de ${state.total||0} avaliação(ões) da liderança foram concluídas.`,
+        `${state.completed||0} de ${state.total||0} avaliação(ões) têm as duas etapas concluídas.`
+      )
+    } else if(moduleKey==='pdi'){
+      const pdis=state.pdis||[];const actions=pdis.flatMap(p=>p.people_pdi_actions||[])
+      human.push(
+        `${pdis.length} plano(s) de desenvolvimento cadastrado(s).`,
+        `${pdis.filter(p=>p.status!=='completed').length} PDI(s) ainda em acompanhamento.`,
+        `${pdis.filter(p=>p.status==='completed').length} PDI(s) concluído(s).`,
+        `${actions.length} ação(ões) cadastrada(s) nos planos.`
+      )
+    } else if(moduleKey==='people_analytics'){
+      human.push(
+        state.moodAverage==null?'Sem check-ins de humor no mês.':`Humor médio do mês: ${Number(state.moodAverage).toFixed(2).replace('.',',')}/5.`,
+        state.climatePct==null?'Sem pesquisa de clima disponível.':`${pct(state.climatePct)} dos convidados responderam à pesquisa considerada.`,
+        state.performancePct==null?'Sem ciclo de desempenho disponível.':`${pct(state.performancePct)} das avaliações do ciclo estão concluídas.`,
+        `${state.pdiActive||0} PDI(s) permanecem ativos.`
+      )
+    }
+    cards.forEach((card,index)=>{setHumanSummary(card,human[index]||'');BI.makeClickable(card,()=>BI.openPeopleDetail(moduleKey,index))})
 
     let charts=document.getElementById(`peopleBiCharts-${moduleKey}`)
-    if(!charts){charts=document.createElement('div');charts.id=`peopleBiCharts-${moduleKey}`;charts.className='nexo-bi-charts';const anchor=section.querySelector('.people-mini-grid');anchor?.insertAdjacentElement('afterend',charts)}
-    if(!charts) return
+    if(!charts){
+      charts=document.createElement('div');charts.id=`peopleBiCharts-${moduleKey}`;charts.className='nexo-bi-charts'
+      const anchor=section.querySelector('.people-mini-grid')||section.querySelector('.page-head')
+      anchor?.insertAdjacentElement('afterend',charts)
+    }
+    if(!charts?.isConnected) return
 
     if(moduleKey==='mood'){
       charts.innerHTML=chartCard('biMoodDistribution','Distribuição do humor','Críticos, neutros e positivos')+chartCard('biMoodOperations','Participação por operação','Volume de respostas')
@@ -335,31 +554,59 @@
 
   BI.openPeopleDetail = function(moduleKey,index){
     const s=NEXO_BI_STATE.people?.[moduleKey]||{}
+
     if(moduleKey==='mood'){
-      const labels=['Respostas','Humor médio','Positivos (4–5)','Críticos (1–2)'];const values=[s.total||0,s.average??'—',s.total?pct(100*s.positive/s.total):'0%',s.total?pct(100*s.critical/s.total):'0%']
+      const labels=['Respostas','Humor médio','Positivos (4–5)','Críticos (1–2)']
+      const values=[s.total||0,s.average==null?'—':Number(s.average).toFixed(2),s.total?pct(100*s.positive/s.total):'0%',s.total?pct(100*s.critical/s.total):'0%']
       const rows=(s.rows||[]).map(r=>[esc(r.operation_name),r.response_count||0,Number(r.average_mood||0).toFixed(2)])
-      return BI.openModal(labels[index]||'Humor',`Período ${s.start||''} a ${s.end||''}`,kpis([['Valor',values[index]],['Respostas',s.total||0],['Positivos',s.positive||0],['Críticos',s.critical||0]])+`<div class="nexo-bi-section"><h3>Por operação</h3>${simpleTable(['Operação','Respostas','Média'],rows)}</div>`)
+      const human=[
+        `${s.total||0} check-in(s) de humor foram registrados no período.`,
+        s.total?`A média das ${s.total} respostas foi ${Number(s.average||0).toFixed(2).replace('.',',')}/5.`:'Ainda não há respostas para calcular a média.',
+        `${s.positive||0} de ${s.total||0} respostas ficaram entre 4 e 5, consideradas positivas.`,
+        `${s.critical||0} de ${s.total||0} respostas ficaram entre 1 e 2, consideradas críticas.`
+      ][index]||'Resumo dos check-ins de humor do período.'
+      return BI.openModal(labels[index]||'Humor',`Período ${s.start||''} a ${s.end||''}`,
+        explainBox(human,'A escala de humor vai de 1 a 5; os resultados são agregados para preservar a leitura do grupo.')+
+        kpis([['Valor',values[index]],['Respostas',s.total||0],['Positivos',s.positive||0],['Críticos',s.critical||0]])+
+        `<div class="nexo-bi-section"><h3>Por operação</h3>${simpleTable(['Operação','Respostas','Média'],rows)}</div>`)
     }
+
     if(moduleKey==='climate'){
-      const p=s.participation||{};const summary=s.summary||[]
+      const p=s.participation||{}, summary=s.summary||[]
       const rows=summary.map(q=>[esc(q.question_text),esc(q.question_type),q.response_count||0,q.question_type==='enps_0_10'?(q.enps==null?'—':q.enps):(q.average_value??'—')])
-      return BI.openModal('Pesquisa de Clima',s.surveyTitle||'',kpis([['Convidados',p.invited||0],['Responderam',p.responded||0],['Participação',pct(p.participation_pct||0)],['Perguntas',summary.length]])+`<div class="nexo-bi-section"><h3>Resultados por pergunta</h3>${simpleTable(['Pergunta','Tipo','Respostas','Resultado'],rows)}</div>`)
+      const human=`${p.responded||0} de ${p.invited||0} colaborador(es) convidados responderam, o que representa ${pct(p.participation_pct||0)} de participação.`
+      return BI.openModal('Pesquisa de Clima',s.surveyTitle||'',
+        explainBox(human,s.anonymous?'Pesquisa anônima: identidade e respostas devem permanecer separadas.':'Pesquisa identificada: as respostas podem ser vinculadas ao participante conforme as permissões.')+
+        kpis([['Convidados',p.invited||0],['Responderam',p.responded||0],['Participação',pct(p.participation_pct||0)],['Perguntas',summary.length]])+
+        `<div class="nexo-bi-section"><h3>Resultados por pergunta</h3>${simpleTable(['Pergunta','Tipo','Respostas','Resultado'],rows)}</div>`)
     }
+
     if(moduleKey==='performance'){
       const rows=(s.evaluations||[]).map(e=>[esc(e.employees?.full_name||'—'),esc(e.operations?.cost_center||'—'),e.self_submitted_at?'Concluída':'Pendente',e.manager_submitted_at?'Concluída':'Pendente',esc(e.status)])
-      return BI.openModal('Avaliação de Desempenho',s.cycleTitle||'',kpis([['Avaliações',s.total||0],['Autoavaliações',s.selfDone||0],['Lideranças',s.mgrDone||0],['Concluídas',s.completed||0]])+`<div class="nexo-bi-section"><h3>Avaliações do ciclo</h3>${simpleTable(['Colaborador','Operação','Autoavaliação','Liderança','Status'],rows)}</div>`)
+      const human=`Das ${s.total||0} avaliações do ciclo, ${s.completed||0} já têm autoavaliação e avaliação da liderança concluídas.`
+      return BI.openModal('Avaliação de Desempenho',s.cycleTitle||'',
+        explainBox(human,'Uma avaliação só entra como concluída quando as etapas previstas para o ciclo foram finalizadas.')+
+        kpis([['Avaliações',s.total||0],['Autoavaliações',s.selfDone||0],['Lideranças',s.mgrDone||0],['Concluídas',s.completed||0]])+
+        `<div class="nexo-bi-section"><h3>Avaliações do ciclo</h3>${simpleTable(['Colaborador','Operação','Autoavaliação','Liderança','Status'],rows)}</div>`)
     }
+
     if(moduleKey==='pdi'){
-      const rows=(s.pdis||[]).map(p=>[esc(p.employees?.full_name||'—'),esc(p.title),esc(p.status),(p.people_pdi_actions||[]).length,window.formatDate?formatDate(p.due_date):p.due_date||'—'])
-      const summaryHtml=kpis([
-        ['PDIs',s.pdis?.length||0],
-        ['Ativos',(s.pdis||[]).filter(p=>p.status!=='completed').length],
-        ['Concluídos',(s.pdis||[]).filter(p=>p.status==='completed').length],
-        ['Ações',(s.pdis||[]).reduce((a,p)=>a+(p.people_pdi_actions||[]).length,0)]
-      ])
-      return BI.openModal('PDI','Planos de Desenvolvimento Individual',summaryHtml+`<div class="nexo-bi-section"><h3>Planos considerados</h3>${simpleTable(['Colaborador','PDI','Status','Ações','Prazo'],rows)}</div>`)
+      const pdis=s.pdis||[]
+      const actions=pdis.flatMap(p=>p.people_pdi_actions||[])
+      const rows=pdis.map(p=>[esc(p.employees?.full_name||'—'),esc(p.title),esc(p.status),(p.people_pdi_actions||[]).length,window.formatDate?formatDate(p.due_date):p.due_date||'—'])
+      const active=pdis.filter(p=>p.status!=='completed').length
+      const done=pdis.filter(p=>p.status==='completed').length
+      const human=`Há ${pdis.length} PDI(s) cadastrado(s): ${active} em acompanhamento e ${done} concluído(s), com ${actions.length} ação(ões) registradas.`
+      return BI.openModal('PDI','Planos de Desenvolvimento Individual',
+        explainBox(human,'O status do PDI e das ações mostra o andamento do desenvolvimento acordado para cada colaborador.')+
+        kpis([['PDIs',pdis.length],['Ativos',active],['Concluídos',done],['Ações',actions.length]])+
+        `<div class="nexo-bi-section"><h3>Planos considerados</h3>${simpleTable(['Colaborador','PDI','Status','Ações','Prazo'],rows)}</div>`)
     }
-    return BI.openModal('People Analytics','Visão consolidada',kpis([['Humor médio',s.moodAverage??'—'],['Participação no clima',pct(s.climatePct)],['Avaliações concluídas',pct(s.performancePct)],['PDIs ativos',s.pdiActive??0]])+`<div class="nexo-bi-note">Os indicadores consolidados usam os dados disponíveis nos módulos Humor, Clima, Desempenho e PDI para o período/ciclo atual.</div>`)
+
+    const human=`O People Analytics consolida os módulos de experiência e desenvolvimento: humor ${s.moodAverage==null?'sem dado':Number(s.moodAverage).toFixed(2).replace('.',',')+'/5'}, clima ${pct(s.climatePct)}, desempenho ${pct(s.performancePct)} e ${s.pdiActive??0} PDI(s) ativo(s).`
+    return BI.openModal('People Analytics','Visão consolidada',
+      explainBox(human,'Os indicadores vêm dos módulos Humor, Pesquisa de Clima, Avaliação de Desempenho e PDI.')+
+      kpis([['Humor médio',s.moodAverage??'—'],['Participação no clima',pct(s.climatePct)],['Avaliações concluídas',pct(s.performancePct)],['PDIs ativos',s.pdiActive??0]]))
   }
 
   // Cartões simples de outros módulos ganham comportamento visual sem alterar dados.

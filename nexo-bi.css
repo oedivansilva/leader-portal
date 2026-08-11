@@ -155,3 +155,61 @@
 
 /* Valores dos gráficos são desenhados dentro do próprio canvas pelo plugin NEXO. */
 .nexo-bi-chart-card canvas { overflow: visible; }
+
+/* ================================================================
+   INDICADORES AUTOEXPLICATIVOS
+   Regra NEXO: número + tradução humana + detalhamento opcional.
+   ================================================================ */
+.nexo-bi-human-summary {
+  margin-top: 8px;
+  color: #6f7480;
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.nexo-bi-human-summary.hidden { display: none; }
+
+.stat .nexo-bi-human-summary,
+.people-mini-stat .nexo-bi-human-summary {
+  min-height: 30px;
+}
+
+.nexo-bi-explainer {
+  margin: 0 0 16px;
+  padding: 16px 18px;
+  border: 1px solid #ffd8c8;
+  border-radius: 16px;
+  background: linear-gradient(135deg,#fff8f4 0%,#fff 100%);
+}
+
+.nexo-bi-explainer-label {
+  margin-bottom: 5px;
+  color: #ee4d2d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.nexo-bi-explainer-text {
+  color: #252830;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.nexo-bi-formula {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f1dfd8;
+  color: #6f7480;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px){
+  .nexo-bi-explainer-text { font-size: 14px; }
+  .stat .nexo-bi-human-summary,
+  .people-mini-stat .nexo-bi-human-summary { min-height: 0; }
+}

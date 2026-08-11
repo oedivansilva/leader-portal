@@ -105,6 +105,10 @@ async function loadDashboard() {
     .sort((a, b) => b.effective_from.localeCompare(a.effective_from))[0]?.scale_id || employee.scale_id
 
   let planned = 0
+  const plannedEmployeeIds = new Set()
+  const plannedByOperation = {}
+  const plannedEmployeesByOperation = {}
+
   employees.forEach(employee => {
     eachDate(start, end, date => {
       const iso = date.toISOString().slice(0, 10)
@@ -115,9 +119,19 @@ async function loadDashboard() {
         weekdays.includes(date.getDay())
       ) {
         planned++
+        plannedEmployeeIds.add(employee.id)
+
+        const operationLabel = operations.find(current => current.id === employee.operation_id)?.cost_center || 'Sem operação'
+        plannedByOperation[operationLabel] = (plannedByOperation[operationLabel] || 0) + 1
+        ;(plannedEmployeesByOperation[operationLabel] ||= new Set()).add(employee.id)
       }
     })
   })
+
+  const plannedEmployeeCountByOperation = Object.fromEntries(
+    Object.entries(plannedEmployeesByOperation).map(([label, ids]) => [label, ids.size])
+  )
+  const consideredEmployees = plannedEmployeeIds.size
 
   metricJustified.textContent = absences.filter(item => justifiedCodes.includes(item.absence_type)).length
   metricUnjustified.textContent = absences.filter(item => unjustifiedCodes.includes(item.absence_type)).length
@@ -337,9 +351,10 @@ async function loadDashboard() {
     selectedMonth,
     operation,
     operationLabel: operation ? (operations.find(item => item.id === operation)?.cost_center || '') : 'Todas as operações',
-    start,end,rows,requests,employees,absences,planned,
+    start,end,rows,requests,employees,absences,planned,consideredEmployees,plannedByOperation,plannedEmployeeCountByOperation,
     justifiedCount: absences.filter(item => justifiedCodes.includes(item.absence_type)).length,
     unjustifiedCount: absences.filter(item => unjustifiedCodes.includes(item.absence_type)).length,
+    otherAbsenceCount: absences.filter(item => !justifiedCodes.includes(item.absence_type) && !unjustifiedCodes.includes(item.absence_type)).length,
     warnings,suspensions,applied,statusCounts,absenceByOperation,regions,leaders,scaleAbsenceRows,
     headStart,headEnd,averageHead,admitted,terminated,voluntary,involuntary,movements,
     timeOldest: metricOldest.textContent,
