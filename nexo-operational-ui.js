@@ -61,7 +61,8 @@
     document.querySelectorAll('.sidebar a,.sidebar button').forEach(item=>{
       const href=item.getAttribute('href')||''
       const mod=item.dataset?.module||''
-      if(mod==='new_hires'||/new-hires/i.test(href)||item.textContent.trim()==='Novos Contratados')item.textContent='Acompanhamento Inicial'
+      const shouldRename=mod==='new_hires'||/new-hires/i.test(href)||item.textContent.trim()==='Novos Contratados'
+      if(shouldRename && item.textContent.trim()!=='Acompanhamento Inicial') item.textContent='Acompanhamento Inicial'
     })
   }
 

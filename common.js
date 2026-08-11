@@ -638,7 +638,7 @@ window.loadNexoOperationalUiAssets = function(){
   }
   if(!document.querySelector('script[data-nexo-operational-ui]')){
     const script=document.createElement('script')
-    script.src='nexo-operational-ui.js';script.dataset.nexoOperationalUi='1'
+    script.src='nexo-operational-ui.js?v=20260811-hotfix1';script.dataset.nexoOperationalUi='1'
     document.body.appendChild(script)
   }
 }
