@@ -5,6 +5,97 @@ window.escapeHTML = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':
 window.formatDate = value => value ? value.split('-').reverse().join('/') : '-'
 window.roleLabel = role => ({admin:'Administrador',leader:'Líder / Gestor',onsite:'Equipe Onsite',employee:'Colaborador'}[role] || role)
 
+
+// ================================================================
+// LAYOUT GLOBAL NEXO
+// Mantém o cabeçalho e a barra lateral visíveis em TODOS os módulos.
+// A sidebar possui rolagem própria quando o menu ultrapassa a tela.
+// ================================================================
+window.installNexoGlobalLayout = function(){
+  if (document.getElementById('nexo-global-layout-style')) return
+
+  const style = document.createElement('style')
+  style.id = 'nexo-global-layout-style'
+  style.textContent = `
+    :root { --nexo-header-height: 78px; }
+
+    html, body { min-height: 100%; }
+    body { margin: 0; overflow-x: hidden; }
+
+    .topbar {
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 1100 !important;
+      background: #fff;
+    }
+
+    .app {
+      display: flex;
+      align-items: flex-start;
+      min-height: calc(100vh - var(--nexo-header-height));
+    }
+
+    .sidebar {
+      position: sticky !important;
+      top: var(--nexo-header-height) !important;
+      align-self: flex-start !important;
+      height: calc(100vh - var(--nexo-header-height)) !important;
+      max-height: calc(100vh - var(--nexo-header-height)) !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: #d4d4da transparent;
+    }
+
+    .sidebar::-webkit-scrollbar { width: 7px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb {
+      background: #d4d4da;
+      border-radius: 999px;
+    }
+    .sidebar::-webkit-scrollbar-thumb:hover { background: #bfc0c7; }
+
+    .main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    @media (max-width: 900px) {
+      .sidebar {
+        position: fixed !important;
+        top: var(--nexo-header-height) !important;
+        left: 0 !important;
+        z-index: 1200 !important;
+        height: calc(100vh - var(--nexo-header-height)) !important;
+        max-height: calc(100vh - var(--nexo-header-height)) !important;
+        transform: translateX(-105%);
+        transition: transform .22s ease;
+        box-shadow: 12px 0 30px rgba(15, 23, 42, .12);
+      }
+
+      .sidebar.open { transform: translateX(0); }
+    }
+  `
+  document.head.appendChild(style)
+
+  const syncHeaderHeight = () => {
+    const header = document.querySelector('.topbar')
+    if (!header) return
+    const height = Math.ceil(header.getBoundingClientRect().height || 78)
+    document.documentElement.style.setProperty('--nexo-header-height', `${height}px`)
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncHeaderHeight, { once: true })
+  } else {
+    syncHeaderHeight()
+  }
+  window.addEventListener('resize', syncHeaderHeight)
+}
+
+installNexoGlobalLayout()
+
 window.NEXO_MODULES = [
   { key: 'overview', label: 'Visão geral', group: 'GESTÃO OPERACIONAL' },
   { key: 'employees', label: 'Colaboradores', group: 'GESTÃO OPERACIONAL' },
