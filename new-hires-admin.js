@@ -2,6 +2,7 @@ let hireCtx = null
 let hireBpos = []
 let hireEmployees = []
 let hireCases = []
+let hireCandidatePool = []
 
 const leaderQuestions = [
   ['employee_profile_fit','Aderência ao perfil da vaga'],
@@ -116,26 +117,71 @@ if (bpoFormEl && bpoNameEl) {
   })
 }
 
+function selectedHireCandidateIds(){
+  const checked=[...document.querySelectorAll('.hire-bulk-candidate:checked')].map(input=>input.value)
+  if(checked.length)return checked
+  return hireEmployee?.value?[hireEmployee.value]:[]
+}
+
+function updateHireBulkCount(){
+  const selected=[...document.querySelectorAll('.hire-bulk-candidate:checked')]
+  const count=document.getElementById('hireBulkSelectedCount')
+  if(count)count.textContent=`${selected.length} selecionado(s)`
+  const button=hireCaseForm?.querySelector('button[type="submit"]')
+  if(button)button.textContent=selected.length>1?`Iniciar ${selected.length} acompanhamentos`:'Iniciar acompanhamento'
+}
+
+function ensureHireBulkUi(){
+  const candidateCount=document.getElementById('hireCandidateCount')
+  if(document.getElementById('hireBulkCandidateBox')||!candidateCount)return
+  const box=document.createElement('div')
+  box.id='hireBulkCandidateBox';box.className='hire-bulk-candidate-box'
+  box.innerHTML=`
+    <div class="hire-bulk-head"><div><strong>Selecionar em lote</strong><small class="muted">Marque vários admitidos e inicie todos com a mesma origem de contratação.</small></div><div class="hire-bulk-actions"><span id="hireBulkSelectedCount" class="badge badge-gray">0 selecionado(s)</span><label><input id="hireBulkSelectAll" type="checkbox"> Selecionar todos do filtro</label></div></div>
+    <div id="hireBulkCandidateList" class="hire-bulk-candidate-list"></div>`
+  candidateCount.insertAdjacentElement('afterend',box)
+  document.getElementById('hireBulkSelectAll').addEventListener('change',event=>{
+    document.querySelectorAll('.hire-bulk-candidate').forEach(input=>input.checked=event.target.checked)
+    updateHireBulkCount()
+  })
+  const select=document.getElementById('hireEmployee')
+  if(select){select.required=false;const label=select.closest('.field')?.querySelector('label');if(label)label.textContent='Ou escolha apenas um colaborador'}
+}
+
 hireCaseForm?.addEventListener('submit', async event => {
   event.preventDefault()
   const source = hireSource.value
   if (source === 'bpo' && !hireBpo.value) return alert('Selecione a BPO responsável ou altere a origem para Recrutamento interno.')
-  const { data, error } = await db.rpc('create_people_hire_case', {
-    p_employee_id: hireEmployee.value,
-    p_bpo_id: source === 'internal' ? null : hireBpo.value,
-    p_notes: hireNotes.value.trim() || null
-  })
-  if (error) return alert(error.message)
+  const employeeIds=selectedHireCandidateIds()
+  if(!employeeIds.length)return alert('Selecione ao menos um colaborador para iniciar o acompanhamento.')
+  if(employeeIds.length>1&&!confirm(`Iniciar o Acompanhamento Inicial para ${employeeIds.length} colaboradores selecionados?`))return
+
+  const submit=event.target.querySelector('button[type="submit"]')
+  const originalText=submit?.textContent
+  if(submit){submit.disabled=true;submit.textContent=`Criando 0 de ${employeeIds.length}...`}
+  let ok=0
+  const errors=[]
+  for(const employeeId of employeeIds){
+    const employee=hireEmployees.find(item=>item.id===employeeId)
+    const { error } = await db.rpc('create_people_hire_case', {
+      p_employee_id: employeeId,
+      p_bpo_id: source === 'internal' ? null : hireBpo.value,
+      p_notes: hireNotes.value.trim() || null
+    })
+    if(error)errors.push(`${employee?.full_name||employeeId}: ${error.message}`);else ok++
+    if(submit)submit.textContent=`Criando ${ok+errors.length} de ${employeeIds.length}...`
+  }
+  if(submit){submit.disabled=false;submit.textContent=originalText||'Iniciar acompanhamento'}
+
   const selectedPreset = hireCandidatePreset.value
   event.target.reset()
   hireSource.value = 'bpo'
   hireCandidatePreset.value = selectedPreset || '30'
-  toggleHireSource()
-  setCandidateRangeFromPreset()
-  alert('Acompanhamento criado com D+7, D+30, D+60 e D+90.')
-  await loadHireCases()
-  await populateHireCandidates()
+  toggleHireSource();setCandidateRangeFromPreset();updateHireBulkCount()
+  await loadHireCases();await populateHireCandidates()
   if (hireCtx.profile.role === 'admin') loadHireAnalytics()
+  if(errors.length)alert(`Acompanhamentos processados.\n\nCriados: ${ok}\nFalhas: ${errors.length}\n\n${errors.slice(0,8).join('\n')}${errors.length>8?'\n...':''}`)
+  else alert(ok===1?'Acompanhamento criado com D+7, D+30, D+60 e D+90.':`${ok} acompanhamentos criados com D+7, D+30, D+60 e D+90.`)
 })
 
 function isoDate(date) {
@@ -171,6 +217,7 @@ window.toggleHireSource = toggleHireSource
 
 async function populateHireCandidates() {
   if (hireCtx.profile.role !== 'admin') return
+  ensureHireBulkUi()
   const { data: existing, error } = await db.from('people_hire_cases').select('employee_id')
   if (error) return
   const used = new Set((existing || []).map(row=>row.employee_id))
@@ -182,9 +229,18 @@ async function populateHireCandidates() {
     .filter(e=>e.admission_date && e.admission_date >= start && e.admission_date <= end)
     .filter(e=>!term || `${e.registration} ${e.full_name}`.toLowerCase().includes(term))
     .sort((a,b)=>String(b.admission_date).localeCompare(String(a.admission_date)) || a.full_name.localeCompare(b.full_name))
+  hireCandidatePool=candidates
   hireEmployee.innerHTML = '<option value="">Selecione</option>' + candidates.slice(0,200).map(e=>`<option value="${e.id}">${escapeHTML(e.registration)} — ${escapeHTML(e.full_name)} · adm. ${formatDate(e.admission_date)}</option>`).join('')
-  hireCandidateCount.textContent = candidates.length ? `${candidates.length} colaborador(es) encontrado(s) no filtro${candidates.length>200?' · exibindo os 200 mais recentes':''}.` : 'Nenhum colaborador encontrado nesse período/filtro.'
+  hireCandidateCount.textContent = candidates.length ? `${candidates.length} colaborador(es) encontrado(s) no filtro.` : 'Nenhum colaborador encontrado nesse período/filtro.'
+  const list=document.getElementById('hireBulkCandidateList')
+  if(list){
+    list.innerHTML=candidates.slice(0,300).map(e=>`<label class="hire-bulk-candidate-row"><input class="hire-bulk-candidate" type="checkbox" value="${e.id}"><span><strong>${escapeHTML(e.full_name)}</strong><small>${escapeHTML(e.registration)} · adm. ${formatDate(e.admission_date)}</small></span></label>`).join('')||'<div class="people-empty">Nenhum colaborador disponível para iniciar acompanhamento.</div>'
+    list.querySelectorAll('.hire-bulk-candidate').forEach(input=>input.addEventListener('change',updateHireBulkCount))
+    const all=document.getElementById('hireBulkSelectAll');if(all)all.checked=false
+    updateHireBulkCount()
+  }
 }
+
 window.populateHireCandidates = populateHireCandidates
 
 async function loadHireCases() {
@@ -397,6 +453,9 @@ getSessionContext().then(async context => {
   if (context.profile.role === 'employee') return location.replace('new-hires.html')
   if (!hasModuleAccess(context.profile,'new_hires')) return location.replace(firstAllowedModuleUrl(context.profile))
   hireCtx = context
+  document.title='NEXO — Acompanhamento Inicial'
+  document.querySelectorAll('h1').forEach(el=>{if(/Novos Contratados/i.test(el.textContent||''))el.textContent='Acompanhamento Inicial'})
+  const setupTitle=document.querySelector('#hireAdminSetup h2');if(setupTitle)setupTitle.textContent='Iniciar acompanhamento'
   renderPortalSidebar(portalSidebar,context.profile,'new_hires')
   const [start,end] = defaultRange()
   hireStart.value=start; hireEnd.value=end
@@ -419,6 +478,6 @@ getSessionContext().then(async context => {
     await loadHireCases()
     if (context.profile.role==='admin') await loadHireAnalytics()
   } catch (error) {
-    alert(`Não foi possível carregar Novos Contratados: ${error.message}`)
+    alert(`Não foi possível carregar Acompanhamento Inicial: ${error.message}`)
   }
 })

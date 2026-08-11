@@ -1,0 +1,56 @@
+/* NEXO — Reorganização Operacional V2 */
+.nexo-legacy-management-hidden{display:none!important}
+
+.nexo-import-compact{padding:16px 20px!important;margin-bottom:16px!important}
+.nexo-import-compact .page-head{margin-bottom:10px!important;align-items:center!important}
+.nexo-import-compact .page-head h2{font-size:20px!important;margin-bottom:3px!important}
+.nexo-import-compact .page-head p{font-size:13px!important;max-width:760px}
+.nexo-import-compact .toolbar{margin-top:8px!important;gap:10px!important;align-items:center!important}
+.nexo-import-compact #employeeImportFile{min-height:42px!important;max-width:460px!important}
+
+.employee-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;margin:12px 0 16px;align-items:end}
+.employee-filter-grid .input{margin:0;min-height:42px}
+.employee-date-filter{display:flex;flex-direction:column;gap:4px}
+.employee-date-filter span{font-size:11px;font-weight:700;color:#7b7f88;text-transform:uppercase;letter-spacing:.04em}
+.employee-filter-grid #employeeClearFilters{min-height:42px}
+
+.nexo-benefit-structure-card{margin-top:16px!important;margin-bottom:16px!important}
+.nexo-benefit-structure-card .nexo-benefit-help{margin:4px 0 12px}
+.nexo-benefit-structure-card #benefitForm{max-width:720px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+.nexo-benefit-structure-card #benefitForm .btn{min-width:190px}
+
+.schedules-main{padding-bottom:70px}
+.schedules-title{margin-bottom:10px}
+.schedule-tabs{position:sticky;top:calc(var(--nexo-header-height,78px) + 8px);z-index:40;display:flex;gap:8px;overflow-x:auto;padding:10px;background:rgba(247,247,249,.94);backdrop-filter:blur(10px);border:1px solid #ececf0;border-radius:16px;margin-bottom:16px}
+.schedule-tabs button{border:0;background:#fff;border:1px solid #ececf0;border-radius:12px;padding:10px 14px;font-family:inherit;font-weight:700;color:#4b5563;white-space:nowrap;cursor:pointer}
+.schedule-tabs button.active,.schedule-tabs button:hover{background:#fff1ed;border-color:#ffc9bb;color:#d84325}
+.schedule-section-root{scroll-margin-top:150px;margin-bottom:18px}
+.schedule-section-root:empty{display:none}
+.schedule-main-table{max-height:620px;overflow:auto}
+.schedule-scales-card .schedule-scale-form{padding:14px;border:1px solid #ececf0;border-radius:14px;background:#fafafa;margin-bottom:14px}
+.schedule-scales-card .toolbar{margin:10px 0}
+.schedule-alias-card .table-wrap{max-height:420px;overflow:auto}
+
+#myTeamRoot .leadership-leader-card{margin-top:0}
+
+@media(max-width:1180px){.employee-filter-grid{grid-template-columns:repeat(2,minmax(160px,1fr))}}
+@media(max-width:700px){
+  .employee-filter-grid{grid-template-columns:1fr}
+  .nexo-benefit-structure-card #benefitForm{grid-template-columns:1fr}
+  .nexo-import-compact .page-head{align-items:flex-start!important}
+}
+
+/* Acompanhamento Inicial — seleção em lote */
+.hire-bulk-candidate-box{grid-column:1/-1;border:1px solid #ececf0;border-radius:16px;background:#fafafa;padding:12px 14px;margin:10px 0 14px}
+.hire-bulk-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:10px}
+.hire-bulk-head>div:first-child{display:flex;flex-direction:column;gap:2px}
+.hire-bulk-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:13px}
+.hire-bulk-candidate-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:280px;overflow:auto;padding-right:4px}
+.hire-bulk-candidate-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid #e7e7ec;border-radius:12px;background:#fff;cursor:pointer}
+.hire-bulk-candidate-row:hover{border-color:#ffb9a8;background:#fff8f6}
+.hire-bulk-candidate-row span{display:flex;flex-direction:column;min-width:0}
+.hire-bulk-candidate-row strong{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hire-bulk-candidate-row small{font-size:11px;color:#7b7f88}
+@media(max-width:800px){.hire-bulk-head{align-items:flex-start;flex-direction:column}.hire-bulk-candidate-list{grid-template-columns:1fr}}
+
+.module-permissions-grid label.nexo-role-incompatible{display:none!important}

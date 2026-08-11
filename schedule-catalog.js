@@ -154,6 +154,7 @@
       aliases=aliasRes.data||[]
       catalogLoaded=true
       renderCatalogTable()
+      renderAliases()
       populateEmployeeCatalogSelect()
       await loadPending()
       return catalog
@@ -213,24 +214,25 @@
   }
 
   function injectUI(){
-    const structure=document.getElementById('structure')
     const employees=document.getElementById('employees')
-    if(!structure||!employees) return
+    const catalogRoot=document.getElementById('scheduleCatalogRoot')
+    const pendingRoot=document.getElementById('schedulePendingRoot')
+    const aliasesRoot=document.getElementById('scheduleAliasesRoot')
 
-    if(!document.getElementById('scheduleCatalogCard')){
+    if(catalogRoot&&!document.getElementById('scheduleCatalogCard')){
       const block=document.createElement('div')
       block.id='scheduleCatalogCard'
       block.className='card schedule-catalog-card'
       block.innerHTML=`
         <div class="page-head">
-          <div><h2>Catálogo de Horários Shopee</h2><p class="muted">Importe a tabela oficial uma vez. O NEXO usa código, nomenclatura Jira e descrição para reconhecer os horários dos colaboradores.</p></div>
+          <div><h2>Catálogo de Horários Shopee</h2><p class="muted">Importe a tabela oficial e deixe o NEXO reconhecer código, nomenclatura Jira, jornada e exceções.</p></div>
           <button class="btn btn-light" type="button" onclick="NexoScheduleCatalog.downloadTemplate()">Modelo de catálogo</button>
         </div>
         <div class="schedule-catalog-kpis">
           <div class="stat"><span>Horários cadastrados</span><strong id="scheduleCatalogTotal">0</strong></div>
           <div class="stat"><span>Prontos para uso</span><strong id="scheduleCatalogReady">0</strong></div>
           <div class="stat"><span>Precisam de revisão</span><strong id="scheduleCatalogReview">0</strong></div>
-          <div class="stat"><span>Aliases aprendidos</span><strong id="scheduleCatalogAliases">0</strong></div>
+          <div class="stat"><span>Correspondências aprendidas</span><strong id="scheduleCatalogAliases">0</strong></div>
         </div>
         <div class="schedule-import-box">
           <div class="field"><label>Planilha oficial de horários</label><input id="scheduleCatalogFile" type="file" class="input" accept=".xlsx,.xls,.csv"></div>
@@ -240,55 +242,89 @@
         <div class="toolbar schedule-catalog-toolbar">
           <input id="scheduleCatalogSearch" class="input" placeholder="Buscar código, escala, Jira ou legenda...">
           <select id="scheduleCatalogStatus" class="input"><option value="">Todos</option><option value="ready">Prontos</option><option value="review">Revisão</option><option value="inactive">Inativos</option></select>
-          <button class="btn btn-light" type="button" onclick="NexoScheduleCatalog.load()">Atualizar</button>
+          <button class="btn btn-light" type="button" onclick="NexoScheduleCatalog.load(true)">Atualizar</button>
         </div>
-        <div class="table-wrap"><table class="table"><thead><tr><th>Código</th><th>Escala / jornada</th><th>Folga</th><th>Exceção</th><th>Status</th><th>Ações</th></tr></thead><tbody id="scheduleCatalogRows"></tbody></table></div>`
-      structure.appendChild(block)
-      document.getElementById('scheduleCatalogSearch').addEventListener('input',renderCatalogTable)
-      document.getElementById('scheduleCatalogStatus').addEventListener('change',renderCatalogTable)
+        <div class="table-wrap schedule-main-table"><table class="table"><thead><tr><th>Código</th><th>Escala / jornada</th><th>Folga</th><th>Exceção</th><th>Status</th><th>Ações</th></tr></thead><tbody id="scheduleCatalogRows"></tbody></table></div>`
+      catalogRoot.appendChild(block)
+      document.getElementById('scheduleCatalogSearch')?.addEventListener('input',renderCatalogTable)
+      document.getElementById('scheduleCatalogStatus')?.addEventListener('change',renderCatalogTable)
     }
 
-    if(!document.getElementById('schedulePendingCard')){
-      const importCard=employees.querySelector('.card')
+    if(pendingRoot&&!document.getElementById('schedulePendingCard')){
       const card=document.createElement('div')
       card.id='schedulePendingCard'
       card.className='card schedule-pending-card'
       card.innerHTML=`
         <div class="page-head">
-          <div><h2>Pendências de horário</h2><p class="muted">Colaboradores podem ser importados sem horário. Resolva aqui em lote sem reabrir cadastro por cadastro.</p></div>
+          <div><h2>Pendências de horário</h2><p class="muted">Resolva em lote os colaboradores que entraram sem horário ou cujo valor importado não foi reconhecido.</p></div>
           <div class="stat compact"><span>Pendentes</span><strong id="schedulePendingCount">0</strong></div>
         </div>
-        <div id="schedulePendingNotice" class="notice schedule-note">Colaboradores sem horário não entram no denominador do ABS até a regularização.</div>
+        <div id="schedulePendingNotice" class="notice schedule-note"><strong>Proteção do ABS:</strong> enquanto o horário estiver pendente, o colaborador não entra no denominador de jornadas previstas.</div>
         <div class="toolbar"><input id="schedulePendingSearch" class="input" placeholder="Buscar colaborador, MAT ou valor importado..."><button class="btn btn-light" type="button" onclick="NexoScheduleCatalog.loadPending()">Atualizar</button></div>
         <div class="table-wrap"><table class="table"><thead><tr><th></th><th>Colaborador</th><th>Valor importado</th><th>Sugestão</th><th>Vigência</th><th>Ação</th></tr></thead><tbody id="schedulePendingRows"></tbody></table></div>
         <div class="schedule-pending-actions"><label><input id="scheduleRememberBulk" type="checkbox" checked> Lembrar correspondências aprovadas</label><button class="btn btn-primary" type="button" onclick="NexoScheduleCatalog.resolveSelected()">Aplicar selecionados</button></div>`
-      importCard?.insertAdjacentElement('afterend',card)
-      document.getElementById('schedulePendingSearch').addEventListener('input',renderPending)
+      pendingRoot.appendChild(card)
+      document.getElementById('schedulePendingSearch')?.addEventListener('input',renderPending)
     }
 
-    // Campo simples no cadastro individual, antes da escala legada.
+    if(aliasesRoot&&!document.getElementById('scheduleAliasesCard')){
+      const card=document.createElement('div')
+      card.id='scheduleAliasesCard'
+      card.className='card schedule-alias-card'
+      card.innerHTML=`
+        <div class="page-head"><div><h2>Correspondências aprendidas</h2><p class="muted">Quando você aprova uma sugestão e marca “lembrar”, o NEXO reutiliza essa equivalência nas próximas importações.</p></div></div>
+        <div class="toolbar"><input id="scheduleAliasSearch" class="input" placeholder="Buscar valor aprendido ou código Shopee..."></div>
+        <div class="table-wrap"><table class="table"><thead><tr><th>Valor reconhecido</th><th>Horário oficial</th><th>Origem</th><th>Aprendido em</th><th>Ação</th></tr></thead><tbody id="scheduleAliasRows"></tbody></table></div>`
+      aliasesRoot.appendChild(card)
+      document.getElementById('scheduleAliasSearch')?.addEventListener('input',renderAliases)
+    }
+
+    // No cadastro individual de colaboradores aparece somente o seletor do catálogo.
     const scaleSelect=document.getElementById('employeeScale')
-    if(scaleSelect&&!document.getElementById('employeeScheduleCatalog')){
+    if(employees&&scaleSelect&&!document.getElementById('employeeScheduleCatalog')){
       const field=scaleSelect.closest('.field')
       const catField=document.createElement('div')
       catField.className='field'
-      catField.innerHTML=`<label>Horário Shopee <span class="muted">(opcional)</span></label><select id="employeeScheduleCatalog" class="input"><option value="">Sem horário definido</option></select><small class="muted">Ao escolher um horário do catálogo, a escala usada na Presença/ABS é preenchida automaticamente.</small>`
+      catField.innerHTML=`<label>Horário Shopee <span class="muted">(opcional)</span></label><select id="employeeScheduleCatalog" class="input"><option value="">Sem horário definido</option></select><small class="muted">O horário oficial define a jornada usada na Presença/ABS e o grupo de liderança quando configurado.</small>`
       field?.insertAdjacentElement('beforebegin',catField)
       scaleSelect.required=false
-      field.querySelector('label').textContent='Escala manual / legado (opcional)'
-      document.getElementById('employeeScheduleCatalog').addEventListener('change',event=>{
+      if(field?.querySelector('label')) field.querySelector('label').textContent='Escala manual / legado (opcional)'
+      document.getElementById('employeeScheduleCatalog')?.addEventListener('change',event=>{
         const item=catalog.find(x=>x.id===event.target.value)
         if(item?.work_scale_id) scaleSelect.value=item.work_scale_id
         if(!event.target.value) scaleSelect.value=''
       })
     }
 
-    // Ajuste de texto da importação sem depender de alteração no HTML-base.
-    const importHelp=employees.querySelector('.card .page-head .muted')
-    if(importHelp) importHelp.textContent='Importe os colaboradores pela MAT. Horário/escala não é obrigatório; itens não reconhecidos ficam pendentes para aprovação.'
-    const headers=[...employees.querySelectorAll('#employeeImportPreview th')]
-    const scaleHeader=headers.find(th=>/Turno\/escala/i.test(th.textContent||''))
-    if(scaleHeader) scaleHeader.textContent='Horário / escala'
+    if(employees){
+      const importHelp=employees.querySelector('.card .page-head .muted')
+      if(importHelp) importHelp.textContent='Importe pela MAT. Horário não é obrigatório; valores não reconhecidos ficam no módulo Horários para aprovação.'
+      const headers=[...employees.querySelectorAll('#employeeImportPreview th')]
+      const scaleHeader=headers.find(th=>/Turno\/escala/i.test(th.textContent||''))
+      if(scaleHeader) scaleHeader.textContent='Horário / escala'
+    }
+  }
+
+  function renderAliases(){
+    const body=document.getElementById('scheduleAliasRows')
+    if(!body)return
+    const term=normalize(document.getElementById('scheduleAliasSearch')?.value||'')
+    const rows=aliases.filter(alias=>{
+      const schedule=catalog.find(item=>item.id===alias.schedule_id)
+      return !term||normalize(`${alias.alias_raw||''} ${schedule?.source_code||''} ${schedule?.display_name||''}`).includes(term)
+    })
+    body.innerHTML=rows.map(alias=>{
+      const schedule=catalog.find(item=>item.id===alias.schedule_id)
+      return `<tr><td><strong>${escapeHTML(alias.alias_raw||'—')}</strong></td><td>${escapeHTML(scheduleLabel(schedule))}</td><td>${escapeHTML(alias.source||'approved_match')}</td><td>${alias.created_at?new Date(alias.created_at).toLocaleString('pt-BR'):'—'}</td><td><button class="btn btn-light btn-small" onclick="NexoScheduleCatalog.deleteAlias('${alias.id}')">Esquecer</button></td></tr>`
+    }).join('')||'<tr><td colspan="5" class="empty">Nenhuma correspondência aprendida ainda.</td></tr>'
+  }
+
+  async function deleteAlias(id){
+    if(!confirm('Esquecer esta correspondência? Na próxima importação o NEXO poderá voltar a sugeri-la para aprovação.'))return
+    const {error}=await db.from('schedule_catalog_aliases').delete().eq('id',id)
+    if(error)return alert(error.message)
+    aliases=aliases.filter(item=>item.id!==id)
+    renderAliases();renderCatalogTable()
   }
 
   function populateEmployeeCatalogSelect(){
@@ -413,6 +449,7 @@
     if(force){catalogLoaded=false;catalogLoading=null}
     await ready()
     renderCatalogTable()
+    renderAliases()
     await loadPending()
   }
 
@@ -538,7 +575,7 @@
 
   window.NexoScheduleCatalog={
     ready,load,loadPending,resolveImport,createPending,clearPending,scheduleLabel,
-    readCatalogFile,importCatalog,downloadTemplate,resolveOne,resolveSelected,toggle,edit,
+    readCatalogFile,importCatalog,downloadTemplate,resolveOne,resolveSelected,toggle,edit,deleteAlias,
     get catalog(){return catalog},get aliases(){return aliases}
   }
 

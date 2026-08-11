@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#EE4D2D">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<title>Horários — NEXO</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <button class="mobile-menu" onclick="toggleSidebar()">☰</button>
+  <div class="brand" aria-label="NEXO — Gestão de Pessoas e Operações">
+    <span class="brand-mark" aria-hidden="true">N</span>
+    <span class="brand-copy"><strong>NEXO</strong><small>Gestão de Pessoas e Operações</small></span>
+  </div>
+  <div class="userbox"><div><strong data-user-name></strong><small data-user-role></small></div><a class="btn btn-light" href="profile.html">Meu perfil</a><button class="btn btn-danger" onclick="logout()">Sair</button></div>
+</header>
+<div class="app" id="schedulePageContext">
+  <aside id="portalSidebar" class="sidebar"></aside>
+  <main class="main schedules-main">
+    <div class="page-head schedules-title">
+      <div><h1>Horários</h1><p class="muted">Catálogo Shopee, pendências, correspondências, escalas e regras de liderança em um só lugar.</p></div>
+      <button class="btn btn-light" type="button" onclick="location.reload()">Atualizar</button>
+    </div>
+
+    <nav class="schedule-tabs" aria-label="Seções de horários">
+      <button class="active" data-scroll="scheduleCatalogRoot">Catálogo Shopee</button>
+      <button data-scroll="schedulePendingRoot">Pendências</button>
+      <button data-scroll="scheduleAliasesRoot">Correspondências</button>
+      <button data-scroll="scheduleScaleRoot">Escalas</button>
+      <button data-scroll="scheduleLeadershipRoot">Carteiras de liderança</button>
+    </nav>
+
+    <div id="scheduleCatalogRoot" class="schedule-section-root"></div>
+    <div id="schedulePendingRoot" class="schedule-section-root"></div>
+    <div id="scheduleAliasesRoot" class="schedule-section-root"></div>
+    <div id="scheduleScaleRoot" class="schedule-section-root"></div>
+    <div id="scheduleLeadershipRoot" class="schedule-section-root"></div>
+  </main>
+</div>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script src="schedules-page.js"></script>
+</body>
+</html>

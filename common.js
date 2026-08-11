@@ -338,39 +338,54 @@ installNexoChartValueLabels()
 window.NEXO_MODULES = [
   { key: 'overview', label: 'Visão geral', group: 'GESTÃO OPERACIONAL' },
   { key: 'employees', label: 'Colaboradores', group: 'GESTÃO OPERACIONAL' },
+  { key: 'my_team', label: 'Minha Equipe', group: 'GESTÃO OPERACIONAL', roles: ['leader'] },
   { key: 'requests', label: 'Solicitações', group: 'GESTÃO OPERACIONAL' },
   { key: 'presence', label: 'Controle de Presença', group: 'GESTÃO OPERACIONAL' },
   { key: 'turnover', label: 'Turnover', group: 'GESTÃO OPERACIONAL' },
-  { key: 'management', label: 'Escalas e benefícios', group: 'GESTÃO OPERACIONAL' },
+  { key: 'schedules', label: 'Horários', group: 'GESTÃO OPERACIONAL', roles: ['admin'] },
   { key: 'mood', label: 'Humor', group: 'PESSOAS & DESENVOLVIMENTO' },
   { key: 'climate', label: 'Pesquisa de Clima', group: 'PESSOAS & DESENVOLVIMENTO' },
-  { key: 'new_hires', label: 'Novos Contratados', group: 'PESSOAS & DESENVOLVIMENTO' },
+  { key: 'new_hires', label: 'Acompanhamento Inicial', group: 'PESSOAS & DESENVOLVIMENTO' },
   { key: 'performance', label: 'Avaliação de Desempenho', group: 'PESSOAS & DESENVOLVIMENTO' },
   { key: 'pdi', label: 'PDI', group: 'PESSOAS & DESENVOLVIMENTO' },
   { key: 'people_analytics', label: 'People Analytics', group: 'PESSOAS & DESENVOLVIMENTO' },
-  { key: 'structure', label: 'Estrutura', group: 'ADMINISTRAÇÃO' },
-  { key: 'users', label: 'Usuários', group: 'ADMINISTRAÇÃO' },
-  { key: 'audit', label: 'Auditoria', group: 'ADMINISTRAÇÃO' }
+  { key: 'structure', label: 'Estrutura', group: 'ADMINISTRAÇÃO', roles: ['admin'] },
+  { key: 'users', label: 'Usuários', group: 'ADMINISTRAÇÃO', roles: ['admin'] },
+  { key: 'audit', label: 'Auditoria', group: 'ADMINISTRAÇÃO', roles: ['admin'] }
 ]
 
+window.moduleAvailableForRole = function(moduleOrKey, role){
+  const module = typeof moduleOrKey === 'string' ? NEXO_MODULES.find(item => item.key === moduleOrKey) : moduleOrKey
+  if(!module) return false
+  return !Array.isArray(module.roles) || module.roles.includes(role)
+}
+
 window.defaultMenuPermissions = function(role){
-  if(role === 'admin') return NEXO_MODULES.map(module => module.key)
-  if(role === 'leader') return ['requests','presence','new_hires']
+  if(role === 'admin') return NEXO_MODULES.filter(module => moduleAvailableForRole(module,'admin')).map(module => module.key)
+  if(role === 'leader') return ['my_team','requests','presence','new_hires']
   if(role === 'onsite') return ['requests']
   if(role === 'employee') return ['mood','climate','new_hires','performance','pdi']
   return []
 }
 
 window.profileMenuPermissions = function(profile){
-  if(profile?.role === 'admin') return defaultMenuPermissions('admin')
-  return Array.isArray(profile?.menu_permissions) ? profile.menu_permissions : defaultMenuPermissions(profile?.role)
+  if(!profile) return []
+  if(profile.role === 'admin') return defaultMenuPermissions('admin')
+  const permissions = Array.isArray(profile.menu_permissions) ? [...profile.menu_permissions] : defaultMenuPermissions(profile.role)
+  // Minha Equipe é uma função operacional básica de toda liderança e não depende de Estrutura.
+  if(profile.role === 'leader' && !permissions.includes('my_team')) permissions.unshift('my_team')
+  return permissions.filter(key => moduleAvailableForRole(key,profile.role))
 }
 
 window.hasModuleAccess = function(profile,moduleKey){
-  return profile?.role === 'admin' || profileMenuPermissions(profile).includes(moduleKey)
+  if(!profile || !moduleAvailableForRole(moduleKey,profile.role)) return false
+  return profile.role === 'admin' || profileMenuPermissions(profile).includes(moduleKey)
 }
 
 window.moduleUrlForProfile = function(profile,moduleKey){
+  if(moduleKey === 'schedules' && profile?.role === 'admin') return 'schedules.html'
+  if(moduleKey === 'my_team' && profile?.role === 'leader') return 'my-team.html'
+  if(moduleKey === 'requests' && profile?.role === 'admin') return 'rh-requests.html'
   if(moduleKey === 'new_hires') {
     return profile?.role === 'employee' ? 'new-hires.html' : 'new-hires-admin.html'
   }
@@ -397,8 +412,7 @@ window.firstAllowedModuleUrl = function(profile){
 window.renderPortalSidebar = function(sidebar,profile,currentModule=''){
   if(!sidebar || !profile) return
   const title = profile.role === 'admin' ? 'NEXO' : profile.role === 'leader' ? 'Liderança' : profile.role === 'onsite' ? 'Equipe Onsite' : 'Meu NEXO'
-  const permissions = profileMenuPermissions(profile)
-  const visible = NEXO_MODULES.filter(module => profile.role === 'admin' || permissions.includes(module.key))
+  const visible = NEXO_MODULES.filter(module => hasModuleAccess(profile,module.key))
   let currentGroup = null
   const links = visible.map(module => {
     const group = module.group !== currentGroup ? `<div class="nav-title">${escapeHTML(module.group)}</div>` : ''
@@ -414,7 +428,23 @@ window.requireModuleAccess = function(profile,moduleKey){
   return false
 }
 
-// Mantém o atalho de Novos Contratados visível também nas páginas antigas
+// Nas páginas antigas da Liderança a sidebar ainda é estática. Minha Equipe
+// é inserida sem conceder qualquer acesso ao módulo administrativo Estrutura.
+window.ensureMyTeamSidebarLink = function(profile){
+  const sidebar=document.querySelector('.sidebar')
+  if(!sidebar)return
+  const existing=sidebar.querySelector('a[href="my-team.html"],[data-nexo-my-team-link]')
+  if(profile?.role!=='leader'||!hasModuleAccess(profile,'my_team')){existing?.remove();return}
+  if(existing)return
+  const link=document.createElement('a')
+  link.className='nav-btn';link.href='my-team.html';link.dataset.module='my_team';link.dataset.nexoMyTeamLink='1';link.textContent='Minha Equipe'
+  const requests=sidebar.querySelector('[data-module="requests"],a[href="leader.html"]')
+  if(requests){requests.insertAdjacentElement('beforebegin',link);return}
+  const firstTitle=sidebar.querySelector('.nav-title')
+  if(firstTitle)firstTitle.insertAdjacentElement('afterend',link);else sidebar.prepend(link)
+}
+
+// Mantém o atalho de Acompanhamento Inicial visível também nas páginas antigas
 // do NEXO, que ainda possuem sidebar estática.
 window.ensureNewHiresSidebarLink = function(profile){
   const sidebar = document.querySelector('.sidebar')
@@ -432,7 +462,7 @@ window.ensureNewHiresSidebarLink = function(profile){
   link.href = moduleUrlForProfile(profile,'new_hires')
   link.dataset.module = 'new_hires'
   link.dataset.nexoNewHiresLink = '1'
-  link.textContent = 'Novos Contratados'
+  link.textContent = 'Acompanhamento Inicial'
 
   const titles = [...sidebar.querySelectorAll('.nav-title')]
   const peopleTitle = titles.find(el => (el.textContent || '').trim().toUpperCase().startsWith('PESSOAS'))
@@ -470,6 +500,7 @@ window.getSessionContext = async function(requiredRole) {
   }
   document.querySelectorAll('[data-user-name]').forEach(el => el.textContent = profile.full_name || user.email.split('@')[0])
   document.querySelectorAll('[data-user-role]').forEach(el => el.textContent = roleLabel(profile.role))
+  ensureMyTeamSidebarLink(profile)
   ensureNewHiresSidebarLink(profile)
   return { user, profile }
 }
@@ -597,11 +628,31 @@ window.loadNexoBiAssets = function(){
 loadNexoBiAssets()
 
 // ================================================================
+// NEXO — REORGANIZAÇÃO OPERACIONAL V2
+// ================================================================
+window.loadNexoOperationalUiAssets = function(){
+  if(!document.querySelector('link[data-nexo-operational-ui]')){
+    const link=document.createElement('link')
+    link.rel='stylesheet';link.href='nexo-operational-ui.css';link.dataset.nexoOperationalUi='1'
+    document.head.appendChild(link)
+  }
+  if(!document.querySelector('script[data-nexo-operational-ui]')){
+    const script=document.createElement('script')
+    script.src='nexo-operational-ui.js';script.dataset.nexoOperationalUi='1'
+    document.body.appendChild(script)
+  }
+}
+loadNexoOperationalUiAssets()
+
+// ================================================================
 // NEXO — CATÁLOGO DE HORÁRIOS SHOPEE
-// Carregado apenas no Admin, sem exigir alteração estrutural no HTML.
+// No Admin principal carrega apenas a integração do cadastro individual.
+// A gestão completa vive em schedules.html.
 // ================================================================
 window.loadNexoScheduleCatalogAssets = function(){
-  if(!document.getElementById('structure') || !document.getElementById('employees')) return
+  const hasStandalone=!!document.getElementById('schedulePageContext')
+  const hasEmployeeForm=!!document.getElementById('employees')
+  if(!hasStandalone&&!hasEmployeeForm)return
   if(!document.querySelector('link[data-nexo-schedule-catalog]')){
     const link=document.createElement('link')
     link.rel='stylesheet';link.href='schedule-catalog.css';link.dataset.nexoScheduleCatalog='1'
@@ -617,13 +668,12 @@ loadNexoScheduleCatalogAssets()
 
 // ================================================================
 // NEXO — CARTEIRA COMPARTILHADA DE LIDERANÇA
-// Admin: configuração em Estrutura.
-// Líder: Minha equipe + Disponíveis para resgate.
+// Admin configura dentro de Horários; Líder usa Minha Equipe.
 // ================================================================
 window.loadNexoLeadershipPoolAssets = function(){
-  const isAdminStructure=!!(document.getElementById('structure')&&document.getElementById('employees'))
-  const isLeaderPage=!!document.getElementById('leaderContext')
-  if(!isAdminStructure&&!isLeaderPage)return
+  const hasAdmin=!!document.getElementById('scheduleLeadershipRoot')
+  const hasLeader=!!document.getElementById('myTeamRoot')
+  if(!hasAdmin&&!hasLeader)return
   if(!document.querySelector('link[data-nexo-leadership-pool]')){
     const link=document.createElement('link')
     link.rel='stylesheet';link.href='leadership-pool.css';link.dataset.nexoLeadershipPool='1'
@@ -636,3 +686,4 @@ window.loadNexoLeadershipPoolAssets = function(){
   }
 }
 loadNexoLeadershipPoolAssets()
+

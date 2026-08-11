@@ -2,7 +2,35 @@ let managementEmployees=[],managementScales=[],managementScaleDays=[],management
 
 async function loadManagement(){const result=await Promise.all([db.from('employees').select('*,operations(cost_center,department,clients(name))').order('full_name'),db.from('work_scales').select('*').order('name'),db.from('scale_work_days').select('*'),db.from('benefits').select('*').order('name'),db.from('employee_private_data').select('*'),db.from('employee_benefits').select('*'),db.from('disciplinary_requests').select('employee_id,penalty_type')]);if(result.some(x=>x.error))return alert(result.find(x=>x.error).error.message);[managementEmployees,managementScales,managementScaleDays,managementBenefits,managementPrivate,managementEmployeeBenefits,managementMeasures]=result.map(x=>x.data||[]);renderManagementSelects();renderScales();renderEmployees()}
 
-function renderManagementSelects(){employeeOperation.innerHTML='<option value="">Selecione...</option>'+operations.map(o=>`<option value="${o.id}">${escapeHTML(o.clients?.name||'')} | ${escapeHTML(o.cost_center)} | ${escapeHTML(o.department)}</option>`).join('');employeeLeader.innerHTML='<option value="">Selecione...</option>'+profiles.filter(p=>p.role==='leader'&&p.active).map(p=>`<option value="${p.id}">${escapeHTML(p.full_name)}</option>`).join('');employeeScale.innerHTML='<option value="">Sem escala manual</option>'+managementScales.filter(s=>s.active).map(s=>`<option value="${s.id}">${escapeHTML(s.description||s.name)}</option>`).join('');employeeBenefits.innerHTML=managementBenefits.filter(b=>b.active).map(b=>`<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('')}
+function ensureEmployeeFilters(){
+  const search=document.getElementById('employeeSearch')
+  if(!search||document.getElementById('employeeAdvancedFilters'))return
+  const toolbar=search.closest('.toolbar')||search.parentElement
+  const filters=document.createElement('div')
+  filters.id='employeeAdvancedFilters';filters.className='employee-filter-grid'
+  filters.innerHTML=`
+    <select id="employeeStatusFilter" class="input"><option value="">Todos os status</option><option value="ativo">Ativos</option><option value="afastado">Afastados</option><option value="desligado">Desligados</option></select>
+    <select id="employeeOperationFilter" class="input"><option value="">Todas as operações</option></select>
+    <select id="employeeLeaderFilter" class="input"><option value="">Todos os líderes</option><option value="__none__">Aguardando resgate / sem líder</option></select>
+    <select id="employeeScheduleFilter" class="input"><option value="">Todos os horários</option><option value="defined">Horário definido</option><option value="pending">Horário pendente</option></select>
+    <div class="employee-date-filter"><span>Admissão de</span><input id="employeeAdmissionFromFilter" type="date" class="input"></div>
+    <div class="employee-date-filter"><span>até</span><input id="employeeAdmissionToFilter" type="date" class="input"></div>
+    <button id="employeeClearFilters" type="button" class="btn btn-light">Limpar filtros</button>`
+  toolbar?.insertAdjacentElement('afterend',filters)
+  filters.querySelectorAll('select,input').forEach(el=>el.addEventListener('input',renderEmployees))
+  document.getElementById('employeeClearFilters').onclick=()=>{filters.querySelectorAll('select,input').forEach(el=>el.value='');renderEmployees()}
+}
+
+function renderManagementSelects(){
+  employeeOperation.innerHTML='<option value="">Selecione...</option>'+operations.map(o=>`<option value="${o.id}">${escapeHTML(o.clients?.name||'')} | ${escapeHTML(o.cost_center)} | ${escapeHTML(o.department)}</option>`).join('')
+  employeeLeader.innerHTML='<option value="">Sem líder principal / aguardando resgate</option>'+profiles.filter(p=>p.role==='leader'&&p.active).map(p=>`<option value="${p.id}">${escapeHTML(p.full_name)}</option>`).join('')
+  employeeScale.innerHTML='<option value="">Sem escala manual</option>'+managementScales.filter(s=>s.active).map(s=>`<option value="${s.id}">${escapeHTML(s.description||s.name)}</option>`).join('')
+  employeeBenefits.innerHTML=managementBenefits.filter(b=>b.active).map(b=>`<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('')
+  ensureEmployeeFilters()
+  const opFilter=document.getElementById('employeeOperationFilter'),leaderFilter=document.getElementById('employeeLeaderFilter')
+  if(opFilter){const current=opFilter.value;opFilter.innerHTML='<option value="">Todas as operações</option>'+operations.map(o=>`<option value="${o.id}">${escapeHTML(o.cost_center)} · ${escapeHTML(o.department)}</option>`).join('');opFilter.value=current}
+  if(leaderFilter){const current=leaderFilter.value;leaderFilter.innerHTML='<option value="">Todos os líderes</option><option value="__none__">Aguardando resgate / sem líder</option>'+profiles.filter(p=>p.role==='leader'&&p.active).map(p=>`<option value="${p.id}">${escapeHTML(p.full_name)}</option>`).join('');leaderFilter.value=current}
+}
 const weekdayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 function renderScales(){scaleRows.innerHTML=managementScales.map(scale=>{const days=managementScaleDays.filter(x=>x.scale_id===scale.id).map(x=>weekdayNames[x.weekday]).join(', ')||'Nenhum';const linked=managementEmployees.filter(x=>x.scale_id===scale.id).length;return `<tr><td><strong>${escapeHTML(scale.name)}</strong></td><td>${escapeHTML(days)}</td><td>${escapeHTML(scale.description||'—')}</td><td><span class="badge ${scale.active?'badge-green':'badge-gray'}">${scale.active?'Ativo':'Inativo'}</span></td><td><div class="actions"><button class="btn btn-light" onclick="editScale('${scale.id}')">Editar</button><button class="btn btn-light" onclick="toggleScale('${scale.id}',${!scale.active})">${scale.active?'Desativar':'Reativar'}</button><button class="btn btn-danger" onclick="deleteScale('${scale.id}')" ${linked?'title="Há colaboradores vinculados"':''}>Excluir</button></div><small class="muted">${linked} colaborador(es) vinculado(s)</small></td></tr>`}).join('')||'<tr><td colspan="5" class="empty">Nenhum turno ou escala cadastrado.</td></tr>'}
 function editScale(id){const scale=managementScales.find(x=>x.id===id);if(!scale)return;scaleEditId.value=id;scaleName.value=scale.name;scaleDescription.value=scale.description||'';const days=managementScaleDays.filter(x=>x.scale_id===id).map(x=>x.weekday);document.querySelectorAll('[name="scaleDay"]').forEach(x=>x.checked=days.includes(Number(x.value)));scaleSaveButton.textContent='Salvar alterações';scaleCancelButton.classList.remove('hidden');scaleForm.scrollIntoView({behavior:'smooth',block:'center'})}
@@ -10,7 +38,33 @@ function cancelScaleEdit(){scaleForm.reset();scaleEditId.value='';scaleSaveButto
 async function toggleScale(id,active){const {error}=await db.from('work_scales').update({active}).eq('id',id);if(error)return alert(error.message);loadManagement()}
 async function deleteScale(id){const linked=managementEmployees.filter(x=>x.scale_id===id).length;if(linked)return alert(`Este turno/escala está vinculado a ${linked} colaborador(es). Desative-o ou altere primeiro a escala desses colaboradores.`);if(!confirm('Excluir definitivamente este turno/escala?'))return;const {error}=await db.from('work_scales').delete().eq('id',id);if(error)return alert(error.message);if(scaleEditId.value===id)cancelScaleEdit();loadManagement()}
 
-function renderEmployees(){const q=employeeSearch.value.trim().toLowerCase();employeeRows.innerHTML=managementEmployees.filter(e=>`${e.registration} ${e.full_name}`.toLowerCase().includes(q)).map(e=>{const measures=managementMeasures.filter(m=>m.employee_id===e.id),warnings=measures.filter(m=>m.penalty_type.toLowerCase().includes('advert')).length,suspensions=measures.filter(m=>m.penalty_type.toLowerCase().includes('susp')).length;return `<tr><td>${escapeHTML(e.registration)}</td><td><strong>${escapeHTML(e.full_name)}</strong></td><td>${escapeHTML(e.operations?.cost_center||'—')}<br><small>${escapeHTML(e.operations?.department||'')}</small></td><td><span class="badge ${e.status==='ativo'?'badge-green':'badge-gray'}">${escapeHTML(e.status)}</span></td><td>${warnings}</td><td>${suspensions}</td><td><button class="btn btn-light" onclick="editEmployee('${e.id}')">Editar</button></td></tr>`}).join('')||'<tr><td colspan="7" class="empty">Nenhum colaborador cadastrado.</td></tr>'}
+function renderEmployees(){
+  const q=employeeSearch.value.trim().toLowerCase()
+  const status=document.getElementById('employeeStatusFilter')?.value||''
+  const operation=document.getElementById('employeeOperationFilter')?.value||''
+  const leader=document.getElementById('employeeLeaderFilter')?.value||''
+  const schedule=document.getElementById('employeeScheduleFilter')?.value||''
+  const admissionFrom=document.getElementById('employeeAdmissionFromFilter')?.value||''
+  const admissionTo=document.getElementById('employeeAdmissionToFilter')?.value||''
+  const filtered=managementEmployees.filter(e=>{
+    if(!`${e.registration} ${e.full_name}`.toLowerCase().includes(q))return false
+    if(status&&e.status!==status)return false
+    if(operation&&e.operation_id!==operation)return false
+    if(leader==='__none__'&&e.leader_id)return false
+    if(leader&&leader!=='__none__'&&e.leader_id!==leader)return false
+    if(schedule==='defined'&&!e.schedule_catalog_id&&!e.scale_id)return false
+    if(schedule==='pending'&&(e.schedule_catalog_id||e.scale_id))return false
+    if(admissionFrom&&(!e.admission_date||e.admission_date<admissionFrom))return false
+    if(admissionTo&&(!e.admission_date||e.admission_date>admissionTo))return false
+    return true
+  })
+  employeeRows.innerHTML=filtered.map(e=>{
+    const measures=managementMeasures.filter(m=>m.employee_id===e.id),warnings=measures.filter(m=>m.penalty_type.toLowerCase().includes('advert')).length,suspensions=measures.filter(m=>m.penalty_type.toLowerCase().includes('susp')).length
+    const leaderName=profiles.find(p=>p.id===e.leader_id)?.full_name||'Aguardando resgate'
+    const scheduleState=e.schedule_catalog_id?'Horário Shopee':e.scale_id?'Escala manual':'Horário pendente'
+    return `<tr><td>${escapeHTML(e.registration)}</td><td><strong>${escapeHTML(e.full_name)}</strong><br><small class="muted">${escapeHTML(leaderName)} · ${escapeHTML(scheduleState)}</small></td><td>${escapeHTML(e.operations?.cost_center||'—')}<br><small>${escapeHTML(e.operations?.department||'')}</small></td><td><span class="badge ${e.status==='ativo'?'badge-green':'badge-gray'}">${escapeHTML(e.status)}</span></td><td>${warnings}</td><td>${suspensions}</td><td><button class="btn btn-light" onclick="editEmployee('${e.id}')">Editar</button></td></tr>`
+  }).join('')||'<tr><td colspan="7" class="empty">Nenhum colaborador encontrado com os filtros atuais.</td></tr>'
+}
 
 function openEmployeeForm(){employeeForm.reset();employeeId.value='';originalEmployeeScale='';if(window.employeeScheduleCatalog)employeeScheduleCatalog.value='';employeeFormTitle.textContent='Cadastrar colaborador';employeeFormCard.classList.remove('hidden');employeeFormCard.scrollIntoView({behavior:'smooth'})}
 function closeEmployeeForm(){employeeFormCard.classList.add('hidden');employeeForm.reset()}

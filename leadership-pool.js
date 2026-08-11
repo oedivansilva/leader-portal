@@ -56,7 +56,7 @@
   }
 
   function injectAdmin(){
-    const structure=q('structure')
+    const structure=q('scheduleLeadershipRoot')
     if(!structure||q('leadershipAdminCard'))return
     const card=document.createElement('div')
     card.id='leadershipAdminCard';card.className='card leadership-admin-card'
@@ -191,10 +191,10 @@
   }
 
   function injectLeader(){
-    const context=q('leaderContext')
-    const main=context?.closest('main')
-    if(!main||q('leaderPortfolioCard'))return
-    const firstActivity=q('leaderRecentActivity')
+    const context=q('myTeamRoot')
+    if(!context||q('leaderPortfolioCard'))return
+    const main=context.closest('main')
+    const firstActivity=null
     const card=document.createElement('section')
     card.id='leaderPortfolioCard';card.className='card leadership-leader-card'
     card.innerHTML=`
@@ -204,7 +204,7 @@
       <div class="leadership-tabs"><button class="active" data-tab="team">Minha equipe</button><button data-tab="available">Disponíveis para resgate <span id="leaderPoolAvailableBadge"></span></button></div>
       <div class="leadership-leader-toolbar"><input id="leaderPoolSearch" class="input" placeholder="Buscar nome ou matrícula..."></div>
       <div id="leaderPoolRows"></div>`
-    if(firstActivity)firstActivity.insertAdjacentElement('beforebegin',card);else main.querySelector('.page-head')?.insertAdjacentElement('afterend',card)
+    context.appendChild(card)
     q('leaderPoolRefresh').onclick=()=>loadLeaderPool().catch(e=>alert(e.message))
     q('leaderPoolSearch').addEventListener('input',e=>{state.leaderSearch=e.target.value;renderLeaderRows()})
     card.querySelectorAll('.leadership-tabs button').forEach(btn=>btn.onclick=()=>{
@@ -255,8 +255,8 @@
 
   async function init(){
     try{
-      const hasAdmin=q('structure')&&q('employees')
-      const hasLeader=q('leaderContext')
+      const hasAdmin=!!q('scheduleLeadershipRoot')
+      const hasLeader=!!q('myTeamRoot')
       if(!hasAdmin&&!hasLeader)return
       const ctx=await getSessionContext()
       if(!ctx)return
