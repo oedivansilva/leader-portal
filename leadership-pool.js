@@ -1,5 +1,5 @@
 (() => {
-  const state={ctx:null,groups:[],members:[],leaders:[],catalog:[],employees:[],pool:null,adminScheduleFilter:'',adminOnlyUsed:true,leaderTab:'team',leaderSearch:''}
+  const state={ctx:null,groups:[],members:[],leaders:[],catalog:[],employees:[],pool:null,adminScheduleFilter:'',adminOnlyUsed:true,leaderTab:'team',leaderSearch:'',leaderSelected:new Set()}
 
   const q=id=>document.getElementById(id)
   const esc=value=>window.escapeHTML?escapeHTML(value):String(value??'')
@@ -202,13 +202,23 @@
       <div id="leaderPoolGroups" class="leadership-group-chips"></div>
       <div id="leaderPoolKpis" class="leadership-kpis leader"></div>
       <div class="leadership-tabs"><button class="active" data-tab="team">Minha equipe</button><button data-tab="available">Disponíveis para resgate <span id="leaderPoolAvailableBadge"></span></button></div>
-      <div class="leadership-leader-toolbar"><input id="leaderPoolSearch" class="input" placeholder="Buscar nome ou matrícula..."></div>
+      <div class="leadership-leader-toolbar">
+        <input id="leaderPoolSearch" class="input" placeholder="Buscar nome ou matrícula...">
+        <div id="leaderPoolBatchBar" class="leadership-batch-bar hidden">
+          <label class="leadership-checkbox"><input id="leaderPoolSelectAll" type="checkbox"> Selecionar todos do filtro</label>
+          <span id="leaderPoolSelectedCount" class="muted">0 selecionados</span>
+          <button id="leaderPoolClaimSelected" class="btn btn-primary btn-small" type="button" disabled>Resgatar selecionados</button>
+        </div>
+      </div>
       <div id="leaderPoolRows"></div>`
     context.appendChild(card)
     q('leaderPoolRefresh').onclick=()=>loadLeaderPool().catch(e=>alert(e.message))
     q('leaderPoolSearch').addEventListener('input',e=>{state.leaderSearch=e.target.value;renderLeaderRows()})
+    q('leaderPoolSelectAll').addEventListener('change',toggleLeaderSelectAll)
+    q('leaderPoolClaimSelected').onclick=claimSelectedEmployees
     card.querySelectorAll('.leadership-tabs button').forEach(btn=>btn.onclick=()=>{
       state.leaderTab=btn.dataset.tab
+      state.leaderSelected.clear()
       card.querySelectorAll('.leadership-tabs button').forEach(x=>x.classList.toggle('active',x===btn))
       renderLeaderRows()
     })
@@ -224,14 +234,74 @@
     renderLeaderRows()
   }
 
+  function availableFilteredRows(){
+    const rows=state.pool?.available||[]
+    const term=(state.leaderSearch||'').trim().toLowerCase()
+    return rows.filter(r=>!term||`${r.registration} ${r.full_name} ${r.operation_name} ${r.schedule_code||''}`.toLowerCase().includes(term))
+  }
+  function updateLeaderBatchBar(filtered=[]){
+    const batch=q('leaderPoolBatchBar'),selectAll=q('leaderPoolSelectAll'),button=q('leaderPoolClaimSelected'),count=q('leaderPoolSelectedCount')
+    if(!batch)return
+    const isAvailable=state.leaderTab==='available'
+    batch.classList.toggle('hidden',!isAvailable)
+    if(!isAvailable)return
+    const validIds=new Set((state.pool?.available||[]).map(r=>r.id))
+    state.leaderSelected=new Set([...state.leaderSelected].filter(id=>validIds.has(id)))
+    const filteredIds=filtered.map(r=>r.id)
+    const selectedInFilter=filteredIds.filter(id=>state.leaderSelected.has(id)).length
+    selectAll.checked=filteredIds.length>0&&selectedInFilter===filteredIds.length
+    selectAll.indeterminate=selectedInFilter>0&&selectedInFilter<filteredIds.length
+    count.textContent=`${state.leaderSelected.size} selecionado${state.leaderSelected.size===1?'':'s'}`
+    button.disabled=state.leaderSelected.size===0
+    button.textContent=state.leaderSelected.size?`Resgatar ${state.leaderSelected.size} selecionado${state.leaderSelected.size===1?'':'s'}`:'Resgatar selecionados'
+  }
+  function toggleLeaderSelectAll(event){
+    const filtered=availableFilteredRows()
+    if(event.target.checked)filtered.forEach(row=>state.leaderSelected.add(row.id))
+    else filtered.forEach(row=>state.leaderSelected.delete(row.id))
+    renderLeaderRows()
+  }
   function renderLeaderRows(){
     const target=q('leaderPoolRows');if(!target)return
     const rows=state.leaderTab==='available'?(state.pool?.available||[]):(state.pool?.my_team||[])
     const term=(state.leaderSearch||'').trim().toLowerCase()
     const filtered=rows.filter(r=>!term||`${r.registration} ${r.full_name} ${r.operation_name} ${r.schedule_code||''}`.toLowerCase().includes(term))
-    target.innerHTML=filtered.map(row=>`<div class="leadership-employee-row"><div class="leadership-employee-main"><strong>${esc(row.full_name)}</strong><small>${esc(row.registration)} · ${esc(row.operation_name)}</small></div><div class="leadership-employee-meta"><span>${row.group_code?`<b>${esc(row.group_code)}</b> · `:''}${row.schedule_code?esc(`${row.schedule_code} · ${row.scale_pattern||'Escala'}`):'Horário pendente'}</span><small>Admissão ${dateBR(row.admission_date)}</small></div><div>${state.leaderTab==='available'?`<button class="btn btn-primary btn-small" onclick="NexoLeadershipPool.claim('${row.id}')">Resgatar</button>`:`<button class="btn btn-light btn-small" onclick="NexoLeadershipPool.release('${row.id}','${esc(row.full_name).replace(/'/g,'&#39;')}')">Liberar</button>`}</div></div>`).join('')||`<div class="leadership-empty">${state.leaderTab==='available'?'Nenhum colaborador disponível para resgate neste momento.':'Sua equipe ainda está vazia.'}</div>`
+    target.innerHTML=filtered.map(row=>`<div class="leadership-employee-row ${state.leaderTab==='available'?'is-selectable':''}">
+      ${state.leaderTab==='available'?`<label class="leadership-row-check" title="Selecionar ${esc(row.full_name)}"><input type="checkbox" class="leadership-employee-check" value="${row.id}" ${state.leaderSelected.has(row.id)?'checked':''}></label>`:''}
+      <div class="leadership-employee-main"><strong>${esc(row.full_name)}</strong><small>${esc(row.registration)} · ${esc(row.operation_name)}</small></div>
+      <div class="leadership-employee-meta"><span>${row.group_code?`<b>${esc(row.group_code)}</b> · `:''}${row.schedule_code?esc(`${row.schedule_code} · ${row.scale_pattern||'Escala'}`):'Horário pendente'}</span><small>Admissão ${dateBR(row.admission_date)}</small></div>
+      <div>${state.leaderTab==='available'?`<button class="btn btn-primary btn-small" onclick="NexoLeadershipPool.claim('${row.id}')">Resgatar</button>`:`<button class="btn btn-light btn-small" onclick="NexoLeadershipPool.release('${row.id}','${esc(row.full_name).replace(/'/g,'&#39;')}')">Liberar</button>`}</div>
+    </div>`).join('')||`<div class="leadership-empty">${state.leaderTab==='available'?'Nenhum colaborador disponível para resgate neste momento.':'Sua equipe ainda está vazia.'}</div>`
+    if(state.leaderTab==='available'){
+      target.querySelectorAll('.leadership-employee-check').forEach(check=>check.addEventListener('change',()=>{
+        if(check.checked)state.leaderSelected.add(check.value)
+        else state.leaderSelected.delete(check.value)
+        updateLeaderBatchBar(filtered)
+      }))
+    }
+    updateLeaderBatchBar(state.leaderTab==='available'?filtered:[])
   }
-
+  async function claimSelectedEmployees(){
+    const ids=[...state.leaderSelected]
+    if(!ids.length)return
+    if(!confirm(`Resgatar ${ids.length} colaborador(es) selecionado(s) para sua equipe?\n\nQuem já tiver sido resgatado por outra liderança não será sobrescrito.`))return
+    const button=q('leaderPoolClaimSelected'),original=button?.textContent
+    if(button){button.disabled=true;button.textContent='Resgatando...'}
+    try{
+      const {data,error}=await db.rpc('claim_employees_for_leader_batch',{p_employee_ids:ids})
+      if(error)throw error
+      const claimed=Number(data?.claimed_count||0),conflicts=Number(data?.conflict_count||0)
+      state.leaderSelected.clear()
+      await loadLeaderPool()
+      if(conflicts){
+        const examples=(data?.conflicts||[]).slice(0,5).map(item=>`• ${item.employee_name||item.employee_id}: ${item.error}`).join('\n')
+        alert(`Resgate em lote concluído.\n\n✅ ${claimed} resgatado(s)\n⚠️ ${conflicts} não puderam ser resgatados${examples?`\n\n${examples}`:''}`)
+      }else{
+        toast(`${claimed} colaborador(es) resgatado(s) para sua equipe.`)
+      }
+    }catch(error){alert(error.message)}
+    finally{if(button){button.disabled=false;button.textContent=original||'Resgatar selecionados'}}
+  }
   async function claim(employeeId){
     const row=(state.pool?.available||[]).find(x=>x.id===employeeId)
     if(!row)return
@@ -266,6 +336,6 @@
     }catch(error){console.warn('NEXO Carteira de Liderança:',error);toast(`Carteira de liderança: ${error.message}`,'error')}
   }
 
-  window.NexoLeadershipPool={loadAdminData,loadLeaderPool,editMembers,claim,release:releaseEmployee,applyScheduleGroup}
+  window.NexoLeadershipPool={loadAdminData,loadLeaderPool,editMembers,claim,claimSelected:claimSelectedEmployees,release:releaseEmployee,applyScheduleGroup}
   init()
 })()

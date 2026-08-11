@@ -36,3 +36,14 @@
 .leadership-employee-row{display:grid;grid-template-columns:minmax(220px,1.3fr) minmax(220px,1fr) auto;gap:16px;align-items:center;padding:13px 0;border-top:1px solid #f0f0f2}.leadership-employee-main,.leadership-employee-meta{display:grid;gap:3px}.leadership-employee-main small,.leadership-employee-meta small{color:#7b808c}.leadership-empty{text-align:center;padding:26px;color:#7b808c;background:#fafafa;border-radius:14px}
 @media(max-width:1050px){.leadership-kpis{grid-template-columns:repeat(2,1fr)}.leadership-admin-grid{grid-template-columns:1fr}.leadership-schedule-toolbar{grid-template-columns:1fr 1fr}.leadership-schedule-toolbar .btn{grid-column:1/-1}.leadership-employee-row{grid-template-columns:1fr auto}.leadership-employee-meta{grid-column:1/-1;grid-row:2}}
 @media(max-width:650px){.leadership-kpis,.leadership-kpis.leader{grid-template-columns:1fr 1fr}.leadership-schedule-toolbar{grid-template-columns:1fr}.leadership-employee-row{grid-template-columns:1fr}.leadership-employee-row>div:last-child{justify-self:start}.leadership-select-line{align-items:flex-start;gap:8px;flex-direction:column}}
+
+
+/* Resgate em lote */
+.leadership-leader-toolbar{display:grid;gap:10px}
+.leadership-batch-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid #ffd8c7;background:#fff8f4;border-radius:14px}
+.leadership-batch-bar .btn{margin-left:auto}
+.leadership-row-check{display:flex;align-items:center;justify-content:center;width:32px;min-width:32px}
+.leadership-row-check input,.leadership-checkbox input{width:16px;height:16px;accent-color:#EE4D2D}
+.leadership-employee-row.is-selectable{grid-template-columns:auto minmax(220px,1.3fr) minmax(220px,1fr) auto}
+@media(max-width:1050px){.leadership-employee-row.is-selectable{grid-template-columns:auto 1fr auto}.leadership-employee-row.is-selectable .leadership-employee-meta{grid-column:2/-1}}
+@media(max-width:650px){.leadership-batch-bar{align-items:flex-start}.leadership-batch-bar .btn{margin-left:0;width:100%}.leadership-employee-row.is-selectable{grid-template-columns:auto 1fr}.leadership-employee-row.is-selectable>div:last-child{grid-column:2}}

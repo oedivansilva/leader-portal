@@ -64,6 +64,7 @@ getSessionContext().then(context=>{
   profileEmail.value=context.profile.email||context.user.email||''
   profilePhone.value=context.profile.phone||''
   profileRole.value=roleLabel(role)
-  signatureCard.classList.toggle('hidden',role!=='onsite')
-  if(role==='onsite')showSignature(context.profile.signature_url||'')
+  const canSignDocuments=['admin','onsite'].includes(role)
+  signatureCard.classList.toggle('hidden',!canSignDocuments)
+  if(canSignDocuments)showSignature(context.profile.signature_url||'')
 })

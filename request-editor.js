@@ -1,5 +1,5 @@
 (()=>{
-  const state={requestId:null,dates:[],onSaved:null,reasons:null,request:null}
+  const state={requestId:null,dates:[],onSaved:null,reasons:null,legalBases:null,role:null,request:null}
   let modal
 
   function ensureModal(){
@@ -32,8 +32,14 @@
               </select>
             </div>
             <div class="field">
-              <label>Motivo</label>
+              <label>Motivo da ocorrência</label>
               <select id="requestEditorReason" class="input" required></select>
+              <small class="muted">O motivo operacional é separado da fundamentação legal.</small>
+            </div>
+            <div id="requestEditorLegalField" class="field hidden">
+              <label>Fundamentação legal — Art. 482 da CLT</label>
+              <select id="requestEditorLegalBasis" class="input"></select>
+              <small class="muted">A alínea é validada pelo RH/Admin ou Onsite antes da geração do documento.</small>
             </div>
             <div class="field">
               <label>Data de emissão</label>
@@ -69,7 +75,7 @@
             <div class="notice"><strong>Atenção:</strong> confira se o início e o retorno correspondem a dias de trabalho do colaborador.</div>
           </div>
           <div class="notice request-editor-warning">
-            Se o documento já estiver assinado, ele será invalidado. O Onsite precisará revisar e assinar novamente após a alteração.
+            Se o documento já estiver assinado, qualquer alteração de conteúdo ou fundamentação o invalidará. O RH/Onsite deverá revisar e assinar novamente.
           </div>
           <div class="portal-modal-actions">
             <button type="button" class="btn btn-light" data-editor-close>Cancelar</button>
@@ -98,6 +104,24 @@
     if(error)throw new Error('Não foi possível carregar os motivos: '+error.message)
     state.reasons=data||[]
     return state.reasons
+  }
+
+  async function getLegalBases(){
+    if(state.legalBases)return state.legalBases
+    const {data,error}=await db.from('disciplinary_legal_bases').select('id,article,letter,title').eq('active',true).order('letter')
+    if(error)throw new Error('Não foi possível carregar as fundamentações legais: '+error.message)
+    state.legalBases=data||[]
+    return state.legalBases
+  }
+
+  async function getEditorRole(){
+    if(state.role)return state.role
+    const {data:{user}}=await db.auth.getUser()
+    if(!user)throw new Error('Sessão não encontrada.')
+    const {data,error}=await db.from('profiles').select('role').eq('id',user.id).single()
+    if(error)throw new Error('Não foi possível identificar seu perfil: '+error.message)
+    state.role=data?.role||''
+    return state.role
   }
 
   function parseLegacyDates(value){
@@ -139,10 +163,12 @@
   async function open(requestId,onSaved){
     ensureModal()
     try{
-      const [requestResult,occurrenceResult,reasons]=await Promise.all([
-        db.from('disciplinary_requests').select('id,employee_name,operation_id,penalty_type,reason_id,incident_date,issue_date,suspension_days,suspension_start_date,suspension_return_date,status,applied_date,document_signed_at,operations(cost_center,department)').eq('id',requestId).single(),
+      const [requestResult,occurrenceResult,reasons,legalBases,role]=await Promise.all([
+        db.from('disciplinary_requests').select('id,employee_name,operation_id,penalty_type,reason_id,legal_basis_id,incident_date,issue_date,suspension_days,suspension_start_date,suspension_return_date,status,applied_date,document_signed_at,operations(cost_center,department)').eq('id',requestId).single(),
         db.from('request_occurrences').select('occurrence_date').eq('request_id',requestId).order('occurrence_date'),
-        getReasons()
+        getReasons(),
+        getLegalBases(),
+        getEditorRole()
       ])
       if(requestResult.error)throw new Error(requestResult.error.message)
       if(occurrenceResult.error)throw new Error(occurrenceResult.error.message)
@@ -156,8 +182,13 @@
       element('#requestEditorOperation').textContent=operation?`${operation.cost_center||''} — ${operation.department||''}`:'—'
       element('#requestEditorStatus').textContent=request.status||'—'
       element('#requestEditorPenaltyType').value=request.penalty_type||'Advertência'
-      element('#requestEditorReason').innerHTML='<option value="">Selecione...</option>'+reasons.map(reason=>`<option value="${reason.id}">${escapeHTML(reason.code)} — ${escapeHTML(reason.title)}</option>`).join('')
+      element('#requestEditorReason').innerHTML='<option value="">Selecione...</option>'+reasons.map(reason=>`<option value="${reason.id}">${escapeHTML(reason.title)}</option>`).join('')
       element('#requestEditorReason').value=request.reason_id||''
+      const canValidateLegal=['admin','onsite'].includes(role)
+      element('#requestEditorLegalField').classList.toggle('hidden',!canValidateLegal)
+      element('#requestEditorLegalBasis').required=canValidateLegal
+      element('#requestEditorLegalBasis').innerHTML='<option value="">Selecione a alínea correta...</option>'+legalBases.map(basis=>`<option value="${basis.id}">${escapeHTML(String(basis.letter).toLowerCase())} — ${escapeHTML(basis.title)}</option>`).join('')
+      element('#requestEditorLegalBasis').value=request.legal_basis_id||''
       element('#requestEditorIssueDate').value=request.issue_date||''
       element('#requestEditorSuspensionDays').value=String(request.suspension_days||1)
       element('#requestEditorSuspensionStart').value=request.suspension_start_date||''
@@ -173,6 +204,8 @@
     if(!state.dates.length)return alert('Adicione pelo menos uma data da ocorrência.')
     if(!element('#requestEditorReason').value)return alert('Selecione o motivo da medida.')
     if(!element('#requestEditorIssueDate').value)return alert('Informe a data de emissão.')
+    const canValidateLegal=['admin','onsite'].includes(state.role)
+    if(canValidateLegal&&!element('#requestEditorLegalBasis').value)return alert('Selecione a fundamentação legal correta do Art. 482 da CLT.')
     const isSuspension=element('#requestEditorPenaltyType').value==='Suspensão'
     const start=element('#requestEditorSuspensionStart').value,returnDate=element('#requestEditorSuspensionReturn').value
     if(isSuspension&&(!start||!returnDate))return alert('Preencha o início e o retorno da suspensão.')
@@ -191,14 +224,24 @@
         new_suspension_return_date:isSuspension?returnDate:null
       })
       if(error)throw new Error(error.message)
-      const invalidated=Number(data?.invalidated_documents||0)
+      let legalResult={updated:false,invalidated_documents:0}
+      if(canValidateLegal){
+        const legalSave=await db.rpc('set_disciplinary_legal_basis',{
+          target_request_id:state.requestId,
+          p_legal_basis_id:Number(element('#requestEditorLegalBasis').value)
+        })
+        if(legalSave.error)throw new Error(legalSave.error.message)
+        legalResult=legalSave.data||legalResult
+      }
+      const invalidated=Number(data?.invalidated_documents||0)+Number(legalResult?.invalidated_documents||0)
       const hadSignedDocument=Boolean(state.request?.document_signed_at)
+      const changed=data?.updated!==false||legalResult?.updated===true
       close()
-      if(data?.updated===false)alert('Nenhuma alteração foi identificada.')
-      else if(invalidated||hadSignedDocument)alert('Solicitação atualizada. O documento assinado anterior foi invalidado e o Onsite deverá assinar novamente.')
+      if(!changed)alert('Nenhuma alteração foi identificada.')
+      else if(invalidated||hadSignedDocument)alert('Solicitação atualizada. O documento anterior foi invalidado e deverá ser assinado novamente.')
       else alert('Solicitação atualizada com sucesso.')
       if(typeof state.onSaved==='function')await state.onSaved()
-    }catch(error){alert('Erro ao salvar: '+error.message+'\n\nConfirme se o arquivo ATIVAR_EDICAO_SOLICITACOES.sql foi executado no Supabase.')}
+    }catch(error){alert('Erro ao salvar: '+error.message+'\n\nConfirme se o SQL de fundamentação legal e edição das solicitações foi executado no Supabase.')}
     finally{button.disabled=false;button.textContent=originalText}
   }
 

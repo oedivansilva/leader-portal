@@ -3,6 +3,10 @@ function isMissingDocumentsTable(error){return error&&(error.code==='PGRST205'||
 
 
 function documentsForRequest(requestId){return documentsByRequest[requestId]||[]}
+function legalBasisSummary(request){
+  const basis=Array.isArray(request.disciplinary_legal_bases)?request.disciplinary_legal_bases[0]:request.disciplinary_legal_bases
+  return basis?`Art. ${escapeHTML(basis.article||'482')}, alínea &quot;${escapeHTML(String(basis.letter||'').toLowerCase())}&quot; · ${escapeHTML(basis.title||'')}`:'⚠ Fundamentação legal pendente'
+}
 function activeDocument(requestId,kinds){return documentsForRequest(requestId).find(document=>document.active&&kinds.includes(document.document_kind))}
 function documentActionButtons(document,label){
   if(!document)return ''
@@ -33,7 +37,7 @@ function renderDocumentCell(request){
 }
 
 async function loadRequests(){
-  const {data,error}=await db.from('disciplinary_requests').select('*,penalty_reasons(*),operations(cost_center,department)').eq('assigned_onsite_id',ctx.user.id).order('created_at',{ascending:false})
+  const {data,error}=await db.from('disciplinary_requests').select('*,penalty_reasons(*),disciplinary_legal_bases(*),operations(cost_center,department)').eq('assigned_onsite_id',ctx.user.id).order('created_at',{ascending:false})
   if(error)return alert(error.message)
   const rows=data||[],requestIds=rows.map(row=>row.id),leaderIds=[...new Set(rows.map(r=>r.leader_id).filter(Boolean))]
   let requesterNames={}
@@ -57,7 +61,7 @@ async function loadRequests(){
       <td>${escapeHTML(r.employee_name)}<br><small class="muted">Solicitado por ${escapeHTML(requesterNames[r.leader_id]||'—')}</small></td>
       <td>${escapeHTML(r.operations?.cost_center)}<br><small>${escapeHTML(r.operations?.department)}</small></td>
       <td>${escapeHTML(r.penalty_type)}${r.suspension_days?` (${r.suspension_days} dia(s))`:''}</td>
-      <td>${escapeHTML(r.penalty_reasons?.title)}</td>
+      <td>${escapeHTML(r.penalty_reasons?.title||'—')}<br><small class="muted">${legalBasisSummary(r)}</small></td>
       <td><span class="badge ${r.status==='aplicado'?'badge-green':'badge-blue'}">${escapeHTML(r.status)}</span></td>
       <td>${renderDocumentCell(r)}</td>
       <td>${r.applied_date?new Date(`${r.applied_date}T00:00:00`).toLocaleDateString('pt-BR'):(!driveDocumentsEnabled?r.status==='gerado':Boolean(original))?`<button class="btn btn-primary" onclick="confirmOnsiteApplication('${r.id}')">Confirmar</button>`:driveDocumentsEnabled?'Aguardando documento original':'Aguardando geração do PDF'}</td>
@@ -80,7 +84,7 @@ async function confirmOnsiteApplication(id){
 }
 
 async function fetchRequest(id){
-  const {data,error}=await db.from('disciplinary_requests').select('*,penalty_reasons(*),operations(city_state,cost_center,department),employees(registration)').eq('id',id).single()
+  const {data,error}=await db.from('disciplinary_requests').select('*,penalty_reasons(*),disciplinary_legal_bases(*),operations(city_state,cost_center,department),employees(registration)').eq('id',id).single()
   if(error){alert(error.message);return null}
   const employee=Array.isArray(data.employees)?data.employees[0]:data.employees
   data.employee_registration=employee?.registration||''

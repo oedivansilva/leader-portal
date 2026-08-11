@@ -101,16 +101,23 @@ window.generateDisciplinaryPDF=async function(request,signature,options={}){
   doc.text(`${advert?'ADVERTIMOS':'SUSPENDEMOS'}: ${request.employee_name.toUpperCase()}`,20,52)
   doc.setFont('helvetica','normal')
 
-  const code=request.penalty_reasons?.code||'H'
-  const reason=request.penalty_reasons?.description||'Faltas injustificadas'
+  const reason=request.penalty_reasons?.description||request.penalty_reasons?.title||'Motivo não informado'
+  const legalBasis=Array.isArray(request.disciplinary_legal_bases)?request.disciplinary_legal_bases[0]:request.disciplinary_legal_bases
+  if(!legalBasis?.letter||!legalBasis?.title){
+    throw new Error('A fundamentação legal da solicitação ainda não foi validada pelo RH. Abra a solicitação e selecione a alínea correta do Art. 482 da CLT antes de gerar o documento.')
+  }
+  const legalLetter=String(legalBasis.letter).toLowerCase()
+  const legalTitle=String(legalBasis.title)
+  const legalReference=`ARTIGO 482, alínea "${legalLetter}", da C.L.T. — ${legalTitle}`
   let body
 
   if(advert){
-    body=`Em conformidade com o ARTIGO 482 alínea ${code} da C.L.T., vimos adverti-lo pelo seguinte motivo:\n\n`+
-      `Ato de indisciplina: ${reason} ocorridas em: ${request.incident_date}.\n\n`+
+    body=`Em conformidade com o ${legalReference}, vimos adverti-lo em razão da ocorrência abaixo:\n\n`+
+      `Motivo da ocorrência: ${reason}\n`+
+      `Data(s) da ocorrência: ${request.incident_date}.\n\n`+
       'Esperamos que tome as providências necessárias para que a irregularidade acima não se repita. '+
-      'Aproveitamos para esclarecer que a repetição ou prática de condutas semelhantes poderá resultar em penalidades '+
-      'mais severas, inclusive a demissão por justa causa, conforme previsto no Artigo 482 e suas alíneas da CLT.'
+      'A repetição ou prática de condutas semelhantes poderá resultar em medidas disciplinares mais severas, '+
+      'observadas as circunstâncias do caso e a legislação aplicável.'
   }else{
     const days=Number(request.suspension_days||1)
     const duration=days===3?'3 (três) dias':'1 (um) dia'
@@ -118,9 +125,12 @@ window.generateDisciplinaryPDF=async function(request,signature,options={}){
     const returnDate=request.suspension_return_date||addDays(start,days)
     body=`CPF: ${request.employee_cpf||'________________'}.\n\n`+
       `Pela presente fica V.Sa. suspenso das atividades laborais pelo período de ${duration}, com início em ${formatDateBR(start)}, `+
-      `devendo retornar às atividades em ${formatDateBR(returnDate)}, em razão das irregularidades informadas nesta comunicação.\n\n`+
-      `Ato de indisciplina: ${reason} Ocorrências em: ${request.incident_date}.\n\n`+
-      'Lembramos que a reincidência deste comportamento poderá resultar em justa causa conforme artigo 482 da CLT.'
+      `devendo retornar às atividades em ${formatDateBR(returnDate)}.\n\n`+
+      `Fundamentação: ${legalReference}.\n`+
+      `Motivo da ocorrência: ${reason}\n`+
+      `Data(s) da ocorrência: ${request.incident_date}.\n\n`+
+      'A reincidência ou a prática de nova conduta disciplinar poderá resultar em medidas mais severas, '+
+      'observadas as circunstâncias do caso e a legislação aplicável.'
   }
 
   doc.text(doc.splitTextToSize(body,170),20,65)
