@@ -1,4 +1,5 @@
 let dashboardCharts = {}
+window.dashboardCharts = dashboardCharts
 
 if (window.Chart) {
   Chart.defaults.font.family = "'Poppins', 'Segoe UI', Arial, sans-serif"
@@ -402,7 +403,26 @@ async function loadDashboard() {
       datasets: { bar: { maxBarThickness: 68, categoryPercentage: .62, barPercentage: .68 } }
     }
   })
+
+
+  // Estado analítico compartilhado com a camada NEXO BI.
+  window.NEXO_BI_STATE = window.NEXO_BI_STATE || {}
+  window.NEXO_BI_STATE.dashboard = {
+    selectedMonth,
+    operation,
+    operationLabel: operation ? (operations.find(item => item.id === operation)?.cost_center || '') : 'Todas as operações',
+    start,end,rows,requests,employees,absences,planned,
+    justifiedCount: absences.filter(item => justifiedCodes.includes(item.absence_type)).length,
+    unjustifiedCount: absences.filter(item => unjustifiedCodes.includes(item.absence_type)).length,
+    warnings,suspensions,applied,statusCounts,absenceByOperation,regions,leaders,scaleAbsenceRows,
+    headStart,headEnd,averageHead,admitted,terminated,voluntary,involuntary,movements,
+    timeOldest: metricOldest.textContent,
+    timeNewest: metricNewest.textContent,
+    timeAverage: metricOccurrenceAverage.textContent
+  }
+  window.NexoBI?.refreshOverview?.()
 }
+
 
 function prepareDashboard() {
   dashboardMonth.value = new Date().toISOString().slice(0, 7)

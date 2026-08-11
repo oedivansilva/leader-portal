@@ -72,6 +72,14 @@ async function loadMoodAdmin() {
     const result = await db.rpc('get_mood_contact_requests')
     if (!result.error) contactRequests.innerHTML = (result.data || []).map(item=>`<div class="contact-request"><strong>${escapeHTML(item.employee_name)}</strong><div class="muted">${escapeHTML(item.registration)} · ${escapeHTML(item.operation_name)} · ${formatDate(item.checkin_date)}</div><div style="margin-top:5px">Humor: ${item.mood}/5${item.note ? ` · ${escapeHTML(item.note)}`:''}</div></div>`).join('') || '<div class="people-empty">Nenhum pedido de contato.</div>'
   }
+  window.NEXO_BI_STATE = window.NEXO_BI_STATE || {}
+  window.NEXO_BI_STATE.people = window.NEXO_BI_STATE.people || {}
+  window.NEXO_BI_STATE.people.mood = {
+    start,end,rows,total,positive,critical,
+    neutral: Math.max(0,total-positive-critical),
+    average: total ? weighted/total : null
+  }
+  window.NexoBI?.refreshPeople?.('mood')
 }
 window.loadMoodAdmin = loadMoodAdmin
 
@@ -134,6 +142,16 @@ async function loadClimateAnalytics() {
 
     return `<div class="people-task"><div><h4>${escapeHTML(q.question_text)}</h4><p class="muted">${escapeHTML(q.category)} · ${escapeHTML(q.question_type)}</p></div><div style="text-align:right">${resultHtml}</div></div>`
   }).join('') || '<div class="people-empty">Sem respostas ainda.</div>'
+  window.NEXO_BI_STATE = window.NEXO_BI_STATE || {}
+  window.NEXO_BI_STATE.people = window.NEXO_BI_STATE.people || {}
+  window.NEXO_BI_STATE.people.climate = {
+    surveyId:id,
+    surveyTitle:climateSurveys.find(s=>s.id===id)?.title || '',
+    anonymous:!!climateSurveys.find(s=>s.id===id)?.anonymous,
+    participation:p,
+    summary:summary.data || []
+  }
+  window.NexoBI?.refreshPeople?.('climate')
 }
 window.loadClimateAnalytics = loadClimateAnalytics
 
@@ -212,6 +230,10 @@ async function loadPerformanceAdmin(){
   const summary=sum.data||[];const total=summary.reduce((s,r)=>s+Number(r.total||0),0),completed=summary.reduce((s,r)=>s+Number(r.completed||0),0),selfDone=summary.reduce((s,r)=>s+Number(r.self_done||0),0),mgrDone=summary.reduce((s,r)=>s+Number(r.manager_done||0),0)
   performanceSummary.innerHTML=`<div class="people-mini-stat"><span>Avaliações</span><strong>${total}</strong></div><div class="people-mini-stat"><span>Autoavaliações</span><strong>${selfDone}</strong></div><div class="people-mini-stat"><span>Lideranças</span><strong>${mgrDone}</strong></div><div class="people-mini-stat"><span>Concluídas</span><strong>${completed}</strong></div>`
   performanceEvaluationRows.innerHTML=(evals.data||[]).map(e=>{const canEvaluate=peopleAdminCtx.profile.role==='admin'||e.manager_id===peopleAdminCtx.profile.id;return `<tr><td><strong>${escapeHTML(e.employees?.full_name||'—')}</strong><br><small>${escapeHTML(e.employees?.registration||'')}</small></td><td>${escapeHTML(e.operations?.cost_center||'—')}</td><td>${e.self_submitted_at?'Concluída':'Pendente'}</td><td>${e.manager_submitted_at?'Concluída':'Pendente'}</td><td><span class="badge ${e.status==='completed'?'badge-green':'badge-yellow'}">${escapeHTML(e.status)}</span></td><td>${canEvaluate?`<button class="btn btn-light" onclick="openManagerEvaluation('${e.id}')">${e.manager_submitted_at?'Ver / revisar':'Avaliar'}</button>`:'—'}</td></tr>`}).join('')||'<tr><td colspan="6" class="empty">Nenhuma avaliação.</td></tr>'
+  window.NEXO_BI_STATE = window.NEXO_BI_STATE || {}
+  window.NEXO_BI_STATE.people = window.NEXO_BI_STATE.people || {}
+  window.NEXO_BI_STATE.people.performance = {cycleId:id,cycleTitle:cycle?.title||'',summary,total,completed,selfDone,mgrDone,evaluations:evals.data||[]}
+  window.NexoBI?.refreshPeople?.('performance')
 }
 window.loadPerformanceAdmin=loadPerformanceAdmin
 
@@ -224,117 +246,31 @@ async function submitManagerEvaluation(event){event.preventDefault();const form=
 
 pdiForm.addEventListener('submit',async event=>{event.preventDefault();const {data:pdi,error}=await db.from('people_pdis').insert({employee_id:pdiEmployee.value,title:pdiTitle.value.trim(),objective:pdiObjective.value.trim(),due_date:pdiDueDate.value||null,status:'active',created_by:peopleAdminCtx.profile.id}).select().single();if(error)return alert(error.message);const actions=pdiActionsText.value.split('\n').map(s=>s.trim()).filter(Boolean);if(actions.length){const r=await db.from('people_pdi_actions').insert(actions.map(action_text=>({pdi_id:pdi.id,action_text,due_date:pdiDueDate.value||null})));if(r.error)return alert(r.error.message)}event.target.reset();alert('PDI criado.');loadPdiAdmin()})
 
-async function loadPdiAdmin(){const {data,error}=await db.from('people_pdis').select('id,title,objective,due_date,status,employees(full_name,registration),people_pdi_actions(id,action_text,status,due_date)').order('created_at',{ascending:false});if(error)return pdiAdminList.innerHTML=`<div class="notice">${escapeHTML(error.message)}</div>`;pdiAdminList.innerHTML=(data||[]).map(p=>`<div class="people-card" style="margin-bottom:14px"><div class="page-head"><div><h3>${escapeHTML(p.employees?.full_name||'')} — ${escapeHTML(p.title)}</h3><p class="muted">${escapeHTML(p.objective)}${p.due_date?' · prazo '+formatDate(p.due_date):''}</p></div><span class="badge ${p.status==='completed'?'badge-green':'badge-yellow'}">${escapeHTML(p.status)}</span></div>${(p.people_pdi_actions||[]).map(a=>`<div class="people-task"><div>${escapeHTML(a.action_text)}</div><span class="badge badge-gray">${escapeHTML(a.status)}</span></div>`).join('')}</div>`).join('')||'<div class="people-empty">Nenhum PDI.</div>'}
+async function loadPdiAdmin(){const {data,error}=await db.from('people_pdis').select('id,title,objective,due_date,status,employees(full_name,registration),people_pdi_actions(id,action_text,status,due_date)').order('created_at',{ascending:false});if(error)return pdiAdminList.innerHTML=`<div class="notice">${escapeHTML(error.message)}</div>`;pdiAdminList.innerHTML=(data||[]).map(p=>`<div class="people-card" style="margin-bottom:14px"><div class="page-head"><div><h3>${escapeHTML(p.employees?.full_name||'')} — ${escapeHTML(p.title)}</h3><p class="muted">${escapeHTML(p.objective)}${p.due_date?' · prazo '+formatDate(p.due_date):''}</p></div><span class="badge ${p.status==='completed'?'badge-green':'badge-yellow'}">${escapeHTML(p.status)}</span></div>${(p.people_pdi_actions||[]).map(a=>`<div class="people-task"><div>${escapeHTML(a.action_text)}</div><span class="badge badge-gray">${escapeHTML(a.status)}</span></div>`).join('')}</div>`).join('')||'<div class="people-empty">Nenhum PDI.</div>';window.NEXO_BI_STATE=window.NEXO_BI_STATE||{};window.NEXO_BI_STATE.people=window.NEXO_BI_STATE.people||{};window.NEXO_BI_STATE.people.pdi={pdis:data||[]};window.NexoBI?.refreshPeople?.('pdi')}
 
-let employeeAccessProfiles = []
-
-function renderAccessCandidateOptions(list) {
-  if (!window.accessEmployee) return
-  accessEmployee.innerHTML = '<option value="">Selecione</option>' + list.map(e=>`<option value="${e.id}">${escapeHTML(e.registration)} — ${escapeHTML(e.full_name)}</option>`).join('')
-}
-
-window.filterAccessEmployees = function() {
-  const term = (accessEmployeeSearch?.value || '').trim().toLowerCase()
-  const used = new Set(employeeAccessProfiles.map(p=>p.employee_id))
-  const candidates = peopleEmployees
-    .filter(e=>e.status!=='desligado' && !used.has(e.id))
-    .filter(e=>!term || `${e.registration} ${e.full_name}`.toLowerCase().includes(term))
-    .slice(0,150)
-  renderAccessCandidateOptions(candidates)
-}
-
-async function loadAccessCandidates(){
-  const {data:profiles,error}=await db.from('profiles').select('id,employee_id,email,active,must_change_password').eq('role','employee')
-  if(error)return
-  employeeAccessProfiles = profiles || []
-  filterAccessEmployees()
-  const employeeMap=new Map(peopleEmployees.map(e=>[e.id,e]))
-  employeeAccessRows.innerHTML=employeeAccessProfiles.map(p=>{
-    const e=employeeMap.get(p.employee_id)||{}
-    const cpfLogin = /@colaborador\.nexo\.local$/i.test(p.email||'')
-    return `<tr>
-      <td><strong>${escapeHTML(e.full_name||'—')}</strong><br><small>${escapeHTML(e.registration||'')}</small></td>
-      <td>${cpfLogin?'<strong>CPF</strong><br><small>Login simplificado ativo</small>':'<span class="badge badge-yellow">Acesso antigo</span><br><small>Converta para login por CPF</small>'}</td>
-      <td><span class="badge ${p.active?'badge-green':'badge-gray'}">${p.active?'Ativo':'Inativo'}</span>${p.must_change_password?'<br><small>Primeiro acesso pendente</small>':''}</td>
-      <td><div class="actions">
-        ${!cpfLogin?`<button class="btn btn-light" onclick="convertEmployeeAccessToCpf('${p.employee_id}')">Usar CPF</button>`:''}
-        <button class="btn btn-light" onclick="resetEmployeePassword('${p.employee_id}')">Redefinir acesso</button>
-        <button class="btn btn-light" onclick="toggleEmployeeAccess('${p.id}',${!p.active})">${p.active?'Desativar':'Reativar'}</button>
-      </div></td>
-    </tr>`
-  }).join('')||'<tr><td colspan="4" class="empty">Nenhum acesso de colaborador criado.</td></tr>'
-}
-
-async function invokeEmployeeAccess(body) {
-  const {data,error}=await db.functions.invoke('people-create-employee-access',{body})
-  if(error) throw new Error(await functionError(error))
-  if(data?.error) throw new Error(data.error)
-  return data
-}
-
-function showEmployeeAccessResult(data, title='Acesso preparado') {
-  employeeAccessResult.classList.remove('hidden')
-  employeeAccessResult.innerHTML=`<strong>${escapeHTML(title)}</strong><br>Login: <code>${escapeHTML(data.login_cpf||'CPF do colaborador')}</code><br>Senha inicial: <code>${escapeHTML(data.temporary_password||'data de nascimento')}</code><br><small>Ao entrar, o colaborador será obrigado a criar uma senha pessoal.</small>`
-}
-
-window.createEmployeeAccess=async function(){
-  const employeeId=accessEmployee.value
-  if(!employeeId)return alert('Selecione o colaborador.')
-  try{
-    const data=await invokeEmployeeAccess({mode:'single',employee_id:employeeId})
-    showEmployeeAccessResult(data,'Acesso criado')
-    accessEmployeeSearch.value=''
-    await loadAccessCandidates()
-  }catch(error){alert(`Erro: ${error.message}`)}
-}
-
-window.createEmployeeAccessBatch=async function(button){
-  if(!confirm('Criar em lote os acessos pendentes dos colaboradores ativos que possuem CPF e data de nascimento cadastrados?'))return
-  if(button){button.disabled=true;button.textContent='Criando...'}
-  let totalCreated=0,rounds=0,missingPrivate=0
-  const skipped = new Set()
-  try{
-    while(rounds<20){
-      const data=await invokeEmployeeAccess({mode:'bulk',limit:25})
-      totalCreated += Number(data.created_count||0)
-      missingPrivate = Math.max(missingPrivate,Number(data.missing_private_count||0))
-      for (const item of (data.errors||[])) skipped.add(item.registration||item.employee_id||item.error)
-      rounds++
-      if(!Number(data.remaining||0) || Number(data.created_count||0)===0) break
-    }
-    employeeAccessResult.classList.remove('hidden')
-    employeeAccessResult.innerHTML=`<strong>Acessos em lote concluídos</strong><br>${totalCreated} acesso(s) criado(s).${missingPrivate?` ${missingPrivate} colaborador(es) estão sem CPF/data de nascimento cadastrados.`:''}${skipped.size?` ${skipped.size} acesso(s) precisam de revisão manual.`:''}<br><small>Login: CPF · senha inicial: data de nascimento (DD/MM/AAAA).</small>`
-    await loadAccessCandidates()
-  }catch(error){alert(`Erro: ${error.message}`)}
-  finally{if(button){button.disabled=false;button.textContent='Criar acessos pendentes'}}
-}
-
-window.convertEmployeeAccessToCpf=async function(employeeId){
-  if(!confirm('Converter este acesso para login por CPF? A senha será redefinida para a data de nascimento e o colaborador precisará criar uma nova senha ao entrar.'))return
-  try{
-    const data=await invokeEmployeeAccess({mode:'convert',employee_id:employeeId})
-    showEmployeeAccessResult(data,'Acesso convertido para CPF')
-    await loadAccessCandidates()
-  }catch(error){alert(`Erro: ${error.message}`)}
-}
-
-window.resetEmployeePassword=async function(employeeId){
-  if(!confirm('Redefinir o primeiro acesso deste colaborador? A senha voltará a ser a data de nascimento e ele será obrigado a criar uma nova senha.'))return
-  try{
-    const data=await invokeEmployeeAccess({mode:'reset_birth',employee_id:employeeId})
-    showEmployeeAccessResult(data,'Acesso redefinido')
-    await loadAccessCandidates()
-  }catch(error){alert(`Erro: ${error.message}`)}
-}
-
+async function loadAccessCandidates(){const {data:profiles,error}=await db.from('profiles').select('id,employee_id,email,active').eq('role','employee');if(error)return;const used=new Set((profiles||[]).map(p=>p.employee_id));const candidates=peopleEmployees.filter(e=>e.status!=='desligado'&&!used.has(e.id));accessEmployee.innerHTML='<option value="">Selecione</option>'+candidates.map(e=>`<option value="${e.id}" data-email="${escapeHTML(e.email||'')}">${escapeHTML(e.registration)} — ${escapeHTML(e.full_name)}</option>`).join('');accessEmployee.onchange=()=>{accessEmail.value=accessEmployee.selectedOptions[0]?.dataset.email||''};const employeeMap=new Map(peopleEmployees.map(e=>[e.id,e]));employeeAccessRows.innerHTML=(profiles||[]).map(p=>{const e=employeeMap.get(p.employee_id)||{};return `<tr><td><strong>${escapeHTML(e.full_name||'—')}</strong><br><small>${escapeHTML(e.registration||'')}</small></td><td>${escapeHTML(p.email||'—')}</td><td><span class="badge ${p.active?'badge-green':'badge-gray'}">${p.active?'Ativo':'Inativo'}</span></td><td><div class="actions"><button class="btn btn-light" onclick="resetEmployeePassword('${p.id}')">Nova senha</button><button class="btn btn-light" onclick="toggleEmployeeAccess('${p.id}',${!p.active})">${p.active?'Desativar':'Reativar'}</button></div></td></tr>`}).join('')||'<tr><td colspan="4" class="empty">Nenhum acesso de colaborador criado.</td></tr>'}
+window.resetEmployeePassword=async function(id){if(!confirm('Gerar uma nova senha temporária para este colaborador?'))return;try{const data=await portalFunctionRequest('admin-manage-user',{body:JSON.stringify({action:'reset-password',user_id:id}),contentType:'application/json'});employeeAccessResult.classList.remove('hidden');employeeAccessResult.innerHTML=`<strong>Nova senha temporária</strong><br>E-mail: ${escapeHTML(data.email)}<br>Senha: <code>${escapeHTML(data.temporary_password)}</code>`}catch(error){alert(error.message)}}
 window.toggleEmployeeAccess=async function(id,active){const {error}=await db.rpc('admin_set_user_active',{target_user_id:id,new_active:active});if(error)return alert(error.message);await loadAccessCandidates()}
-
+window.createEmployeeAccess=async function(){const employeeId=accessEmployee.value,email=accessEmail.value.trim();if(!employeeId||!email)return alert('Selecione o colaborador e informe o e-mail.');const {data,error}=await db.functions.invoke('people-create-employee-access',{body:{employee_id:employeeId,email}});if(error)return alert(`Erro: ${await functionError(error)}`);employeeAccessResult.classList.remove('hidden');employeeAccessResult.innerHTML=`<strong>Acesso criado</strong><br>E-mail: ${escapeHTML(data.email)}<br>Senha temporária: <code>${escapeHTML(data.temporary_password)}</code>`;await loadAccessCandidates()}
 
 async function loadPeopleAnalytics(){
-  const [start,end]=monthDates();const mood=await db.rpc('get_mood_analytics',{p_start:start,p_end:end});if(!mood.error){const rows=mood.data||[],total=rows.reduce((s,r)=>s+Number(r.response_count||0),0),weighted=rows.reduce((s,r)=>s+Number(r.average_mood||0)*Number(r.response_count||0),0);paMood.textContent=total?(weighted/total).toFixed(2):'—'}
-  const survey=climateSurveys.find(s=>s.status==='active')||climateSurveys[0];if(survey){const p=await db.rpc('get_climate_participation',{p_survey_id:survey.id});paClimate.textContent=p.error?'—':`${p.data?.[0]?.participation_pct||0}%`}else paClimate.textContent='—'
-  const cycle=performanceCycles.find(c=>c.status==='active')||performanceCycles[0];if(cycle){const s=await db.rpc('get_performance_summary',{p_cycle_id:cycle.id});if(!s.error){const rows=s.data||[],total=rows.reduce((a,r)=>a+Number(r.total||0),0),done=rows.reduce((a,r)=>a+Number(r.completed||0),0);paPerformance.textContent=total?`${Math.round(100*done/total)}%`:'—'}}else paPerformance.textContent='—'
-  const pdis=await db.from('people_pdis').select('id',{count:'exact',head:true}).eq('status','active');paPdi.textContent=pdis.error?'—':(pdis.count||0)
+  const [start,end]=monthDates()
+  let moodAverage=null, climatePct=null, performancePct=null, pdiActive=0
+  const mood=await db.rpc('get_mood_analytics',{p_start:start,p_end:end})
+  if(!mood.error){
+    const rows=mood.data||[],total=rows.reduce((s,r)=>s+Number(r.response_count||0),0),weighted=rows.reduce((s,r)=>s+Number(r.average_mood||0)*Number(r.response_count||0),0)
+    moodAverage=total?(weighted/total):null
+    paMood.textContent=moodAverage!=null?moodAverage.toFixed(2):'—'
+  }
+  const survey=climateSurveys.find(s=>s.status==='active')||climateSurveys[0]
+  if(survey){const p=await db.rpc('get_climate_participation',{p_survey_id:survey.id});climatePct=p.error?null:Number(p.data?.[0]?.participation_pct||0);paClimate.textContent=climatePct==null?'—':`${climatePct}%`}else paClimate.textContent='—'
+  const cycle=performanceCycles.find(c=>c.status==='active')||performanceCycles[0]
+  if(cycle){const s=await db.rpc('get_performance_summary',{p_cycle_id:cycle.id});if(!s.error){const rows=s.data||[],total=rows.reduce((a,r)=>a+Number(r.total||0),0),done=rows.reduce((a,r)=>a+Number(r.completed||0),0);performancePct=total?Math.round(100*done/total):null;paPerformance.textContent=performancePct==null?'—':`${performancePct}%`}}else paPerformance.textContent='—'
+  const pdis=await db.from('people_pdis').select('id',{count:'exact',head:true}).eq('status','active');pdiActive=pdis.error?0:(pdis.count||0);paPdi.textContent=pdis.error?'—':pdiActive
+  window.NEXO_BI_STATE=window.NEXO_BI_STATE||{}
+  window.NEXO_BI_STATE.people=window.NEXO_BI_STATE.people||{}
+  window.NEXO_BI_STATE.people.people_analytics={start,end,moodAverage,climatePct,performancePct,pdiActive,surveyTitle:survey?.title||'',cycleTitle:cycle?.title||''}
+  window.NexoBI?.refreshPeople?.('people_analytics')
 }
 
 async function openPeopleAdminModule(moduleKey){showPeopleAdminSection(moduleKey);if(moduleKey==='mood')return loadMoodAdmin();if(moduleKey==='climate'){if(peopleAdminCtx.profile.role==='admin')climateAdminCreator.classList.remove('hidden');if(!climateQuestionBuilder.children.length)addClimateQuestionRow();return climateSurveySelect.value&&loadClimateAnalytics()}if(moduleKey==='performance'){if(peopleAdminCtx.profile.role==='admin')performanceAdminCreator.classList.remove('hidden');return loadPerformanceAdmin()}if(moduleKey==='pdi'){if(peopleAdminCtx.profile.role==='onsite')pdiCreator.classList.add('hidden');return loadPdiAdmin()}if(moduleKey==='people_analytics'){if(peopleAdminCtx.profile.role==='admin')employeeAccessCard.classList.remove('hidden');return loadPeopleAnalytics()}}

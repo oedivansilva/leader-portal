@@ -235,30 +235,61 @@ window.loadHrLeadershipPendencies = loadHrLeadershipPendencies
 async function loadHireAnalytics() {
   if (hireCtx.profile.role !== 'admin') return
   const filterValue = hireBpoFilter.value
-  const { data, error } = await db.rpc('get_people_hire_bpo_analytics', {
+  const source = filterValue === '__internal__' ? 'internal' : (filterValue ? 'bpo' : null)
+  const detailResult = await db.rpc('get_people_hire_bi_detail', {
     p_start: hireStart.value,
     p_end: hireEnd.value,
-    p_bpo_id: filterValue && filterValue !== '__internal__' ? filterValue : null
+    p_source: source,
+    p_bpo_id: filterValue && filterValue !== '__internal__' ? filterValue : null,
+    p_operation_id: document.getElementById('hireBiOperation')?.value || null,
+    p_leader_id: document.getElementById('hireBiLeader')?.value || null,
+    p_checkpoint_day: document.getElementById('hireBiCheckpoint')?.value ? Number(document.getElementById('hireBiCheckpoint').value) : null,
+    p_reviewer_type: document.getElementById('hireBiReviewer')?.value || null,
+    p_case_status: null
   })
-  if (error) return alert(error.message)
-  let rows = data || []
-  if (filterValue === '__internal__') rows = rows.filter(r=>!r.bpo_id)
-  const sumHires = rows.reduce((s,r)=>s+Number(r.hires||0),0)
-  const weighted = key => {
-    const valid = rows.filter(r=>r[key]!=null && Number(r.hires)>0)
-    const denominator = valid.reduce((s,r)=>s+Number(r.hires),0)
-    return denominator ? valid.reduce((s,r)=>s+Number(r[key])*Number(r.hires),0)/denominator : null
+
+  if (detailResult.error) {
+    console.warn('NEXO BI detalhado indisponível; usando analytics básico.', detailResult.error)
+    const { data, error } = await db.rpc('get_people_hire_bpo_analytics', {
+      p_start: hireStart.value,
+      p_end: hireEnd.value,
+      p_bpo_id: filterValue && filterValue !== '__internal__' ? filterValue : null
+    })
+    if (error) return alert(error.message)
+    let rows = data || []
+    if (filterValue === '__internal__') rows = rows.filter(r=>!r.bpo_id)
+    const sumHires = rows.reduce((s,r)=>s+Number(r.hires||0),0)
+    const weighted = key => {
+      const valid = rows.filter(r=>r[key]!=null && Number(r.hires)>0)
+      const denominator = valid.reduce((s,r)=>s+Number(r.hires),0)
+      return denominator ? valid.reduce((s,r)=>s+Number(r[key])*Number(r.hires),0)/denominator : null
+    }
+    hireOverallCards.innerHTML = `
+      <div class="people-mini-stat"><span>Contratados</span><strong>${sumHires}</strong></div>
+      <div class="people-mini-stat"><span>Qualidade do recrutamento</span><strong>${pct(weighted('recruitment_pct'))}</strong></div>
+      <div class="people-mini-stat"><span>Adaptação</span><strong>${pct(weighted('adaptation_pct'))}</strong></div>
+      <div class="people-mini-stat"><span>Onboarding</span><strong>${pct(weighted('onboarding_pct'))}</strong></div>
+      <div class="people-mini-stat"><span>Liderança</span><strong>${pct(weighted('leadership_pct'))}</strong></div>
+      <div class="people-mini-stat"><span>Assiduidade F/NS</span><strong>${pct(weighted('attendance_pct'))}</strong></div>`
+    hireAnalyticsRows.innerHTML = rows.map(r=>`<tr><td><strong>${r.bpo_id?'BPO':'Interno'}</strong><br><small>${escapeHTML(r.bpo_name)}</small></td><td>${r.hires}</td><td>${pct(r.recruitment_pct)}</td><td>${pct(r.adaptation_pct)}</td><td>${pct(r.onboarding_pct)}</td><td>${pct(r.leadership_pct)}</td><td>${pct(r.attendance_pct)}</td><td>${r.medical_certificates||0}</td><td>${pct(r.retention_d30)}</td><td>${pct(r.retention_d90)}</td></tr>`).join('') || '<tr><td colspan="10" class="empty">Sem dados no período.</td></tr>'
+    document.getElementById('hireAnalyticsTableWrap')?.classList.remove('hidden')
+    return
   }
-  hireOverallCards.innerHTML = `
-    <div class="people-mini-stat"><span>Contratados</span><strong>${sumHires}</strong></div>
-    <div class="people-mini-stat"><span>Qualidade do recrutamento</span><strong>${pct(weighted('recruitment_pct'))}</strong></div>
-    <div class="people-mini-stat"><span>Adaptação</span><strong>${pct(weighted('adaptation_pct'))}</strong></div>
-    <div class="people-mini-stat"><span>Onboarding</span><strong>${pct(weighted('onboarding_pct'))}</strong></div>
-    <div class="people-mini-stat"><span>Liderança</span><strong>${pct(weighted('leadership_pct'))}</strong></div>
-    <div class="people-mini-stat"><span>Assiduidade F/NS</span><strong>${pct(weighted('attendance_pct'))}</strong></div>`
-  hireAnalyticsRows.innerHTML = rows.map(r=>`<tr><td><strong>${r.bpo_id?'BPO':'Interno'}</strong><br><small>${escapeHTML(r.bpo_name)}</small></td><td>${r.hires}</td><td>${pct(r.recruitment_pct)}</td><td>${pct(r.adaptation_pct)}</td><td>${pct(r.onboarding_pct)}</td><td>${pct(r.leadership_pct)}</td><td>${pct(r.attendance_pct)}</td><td>${r.medical_certificates||0}</td><td>${pct(r.retention_d30)}</td><td>${pct(r.retention_d90)}</td></tr>`).join('') || '<tr><td colspan="10" class="empty">Sem dados no período.</td></tr>'
+
+  const detail = detailResult.data || {}
+  window.NEXO_BI_STATE = window.NEXO_BI_STATE || {}
+  window.NEXO_BI_STATE.newHires = detail
+
+  const rows = detail.comparison || []
+  hireAnalyticsRows.innerHTML = rows.map(r=>`<tr>
+    <td><strong>${r.recruitment_source==='internal'?'Interno':'BPO'}</strong><br><small>${escapeHTML(r.source_name||'Recrutamento interno')}</small></td>
+    <td>${r.hires||0}</td><td>${pct(r.recruitment_pct)}</td><td>${pct(r.adaptation_pct)}</td><td>${pct(r.onboarding_pct)}</td><td>${pct(r.leadership_pct)}</td><td>${pct(r.attendance_pct)}</td><td>${r.medical_certificates||0}</td><td>${pct(r.retention_d30)}</td><td>${pct(r.retention_d90)}</td>
+  </tr>`).join('') || '<tr><td colspan="10" class="empty">Sem dados no período.</td></tr>'
+
   document.getElementById('hireAnalyticsTableWrap')?.classList.remove('hidden')
+  if (window.NexoBI?.renderHireDashboard) window.NexoBI.renderHireDashboard(detail)
 }
+
 window.loadHireAnalytics = loadHireAnalytics
 
 window.openHireCase = async function(caseId) {

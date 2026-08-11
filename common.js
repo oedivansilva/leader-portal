@@ -339,3 +339,20 @@ window.viewSignedDisciplinaryDocument=async function(requestId){
     setTimeout(()=>URL.revokeObjectURL(url),120000)
   }catch(error){preview?.close();alert(error.message)}
 }
+
+// ================================================================
+// NEXO BI — recursos compartilhados em todos os módulos
+// ================================================================
+window.loadNexoBiAssets = function(){
+  if(!document.querySelector('link[data-nexo-bi]')){
+    const link=document.createElement('link')
+    link.rel='stylesheet';link.href='nexo-bi.css';link.dataset.nexoBi='1'
+    document.head.appendChild(link)
+  }
+  if(!document.querySelector('script[data-nexo-bi]')){
+    const script=document.createElement('script')
+    script.src='nexo-bi.js';script.defer=true;script.dataset.nexoBi='1'
+    document.head.appendChild(script)
+  }
+}
+loadNexoBiAssets()

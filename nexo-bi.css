@@ -1,0 +1,153 @@
+/* ================================================================
+   NEXO BI V1 — camada visual compartilhada
+   ================================================================ */
+
+.nexo-bi-clickable {
+  cursor: pointer;
+  position: relative;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.nexo-bi-clickable:hover {
+  transform: translateY(-2px);
+  border-color: #ffd0bd !important;
+  box-shadow: 0 12px 28px rgba(31,41,55,.08);
+}
+.nexo-bi-clickable::after {
+  content: 'Ver detalhes ›';
+  display: block;
+  margin-top: 8px;
+  color: #ee4d2d;
+  font-size: 11px;
+  font-weight: 700;
+  opacity: .9;
+}
+
+.nexo-bi-panel {
+  background: #fff;
+  border: 1px solid #ececf0;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(31,41,55,.04);
+}
+
+.nexo-bi-filter-row {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.nexo-bi-filter-row .field { margin: 0; }
+.nexo-bi-filter-row label {
+  display: block;
+  margin-bottom: 5px;
+  color: #6f7480;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.nexo-bi-charts {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 12px;
+  margin: 14px 0 18px;
+}
+.nexo-bi-chart-card {
+  background: #fff;
+  border: 1px solid #ececf0;
+  border-radius: 16px;
+  padding: 14px;
+  min-height: 210px;
+}
+.nexo-bi-chart-card h4 { margin: 0 0 4px; font-size: 13px; }
+.nexo-bi-chart-card p { margin: 0 0 8px; font-size: 11px; color: #7b7f88; }
+.nexo-bi-chart-box { height: 150px; position: relative; }
+
+.nexo-bi-insights {
+  border: 1px solid #ffe0d3;
+  background: #fff8f4;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 14px 0 18px;
+}
+.nexo-bi-insights h3,.nexo-bi-insights h4 { margin: 0 0 8px; }
+.nexo-bi-insight-list { display: grid; gap: 7px; }
+.nexo-bi-insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #4c5058;
+  font-size: 13px;
+}
+.nexo-bi-insight::before { content: '•'; color: #ee4d2d; font-weight: 900; }
+
+.nexo-bi-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15,23,42,.58);
+  padding: 18px;
+}
+.nexo-bi-modal.hidden { display: none; }
+.nexo-bi-modal-card {
+  width: min(1040px,100%);
+  max-height: 92vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 24px 70px rgba(15,23,42,.22);
+}
+.nexo-bi-modal-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 22px;
+  background: rgba(255,255,255,.97);
+  border-bottom: 1px solid #ececf0;
+  backdrop-filter: blur(10px);
+}
+.nexo-bi-modal-head h2 { margin: 0 0 4px; }
+.nexo-bi-modal-body { padding: 20px 22px 26px; }
+
+.nexo-bi-kpis {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.nexo-bi-kpi {
+  border: 1px solid #ececf0;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.nexo-bi-kpi span { display:block;color:#7b7f88;font-size:11px; }
+.nexo-bi-kpi strong { display:block;font-size:22px;margin-top:3px;color:#252830; }
+
+.nexo-bi-section { margin-top: 18px; }
+.nexo-bi-section h3 { margin: 0 0 10px; }
+.nexo-bi-table { width:100%; border-collapse: collapse; font-size: 12px; }
+.nexo-bi-table th,.nexo-bi-table td { padding: 10px 9px; border-bottom:1px solid #ececf0; text-align:left; vertical-align:top; }
+.nexo-bi-table th { color:#6f7480; font-size:11px; }
+.nexo-bi-note { background:#f7f8fa;border:1px solid #ececf0;border-radius:14px;padding:12px 14px;color:#50545d;font-size:12px;line-height:1.5; }
+.nexo-bi-comment { border-left:3px solid #ee4d2d;background:#fff8f4;border-radius:10px;padding:10px 12px;margin:8px 0; }
+.nexo-bi-source { color:#7b7f88;font-size:11px;margin-top:4px; }
+
+.nexo-bi-score-badge {
+  display:inline-flex;align-items:center;justify-content:center;min-width:58px;
+  padding:5px 9px;border-radius:999px;background:#fff0e9;color:#d84324;font-weight:800;font-size:12px;
+}
+
+@media (max-width: 1180px){
+  .nexo-bi-charts { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .nexo-bi-filter-row { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 760px){
+  .nexo-bi-charts,.nexo-bi-filter-row,.nexo-bi-kpis { grid-template-columns:1fr; }
+  .nexo-bi-modal-head { position:static; }
+}
