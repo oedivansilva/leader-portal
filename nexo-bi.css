@@ -60,7 +60,7 @@
 }
 .nexo-bi-chart-card h4 { margin: 0 0 4px; font-size: 13px; }
 .nexo-bi-chart-card p { margin: 0 0 8px; font-size: 11px; color: #7b7f88; }
-.nexo-bi-chart-box { height: 150px; position: relative; }
+.nexo-bi-chart-box { height: 170px; position: relative; overflow: visible; }
 
 .nexo-bi-insights {
   border: 1px solid #ffe0d3;
@@ -151,3 +151,7 @@
   .nexo-bi-charts,.nexo-bi-filter-row,.nexo-bi-kpis { grid-template-columns:1fr; }
   .nexo-bi-modal-head { position:static; }
 }
+
+
+/* Valores dos gráficos são desenhados dentro do próprio canvas pelo plugin NEXO. */
+.nexo-bi-chart-card canvas { overflow: visible; }

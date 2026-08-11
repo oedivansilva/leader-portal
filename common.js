@@ -107,6 +107,234 @@ window.installNexoGlobalLayout = function(){
 
 installNexoGlobalLayout()
 
+// ================================================================
+// GRÁFICOS NEXO — valores sempre visíveis
+// Aplica automaticamente quantidades em pizza/donut, barras e linhas.
+// Não depende de plugin externo.
+// ================================================================
+window.installNexoChartValueLabels = function(){
+  if (!window.Chart) return
+  if (Chart.registry?.plugins?.get?.('nexoValueLabels')) return
+
+  const formatNumber = value => {
+    const n = Number(value)
+    if (!Number.isFinite(n)) return String(value ?? '')
+    return n.toLocaleString('pt-BR', {
+      minimumFractionDigits: Number.isInteger(n) ? 0 : 0,
+      maximumFractionDigits: Number.isInteger(n) ? 0 : 1
+    })
+  }
+
+  const roundRect = (ctx, x, y, width, height, radius = 7) => {
+    const r = Math.min(radius, width / 2, height / 2)
+    ctx.beginPath()
+    ctx.moveTo(x + r, y)
+    ctx.arcTo(x + width, y, x + width, y + height, r)
+    ctx.arcTo(x + width, y + height, x, y + height, r)
+    ctx.arcTo(x, y + height, x, y, r)
+    ctx.arcTo(x, y, x + width, y, r)
+    ctx.closePath()
+  }
+
+  const valueLabelsPlugin = {
+    id: 'nexoValueLabels',
+    afterDatasetsDraw(chart, _args, options = {}) {
+      if (options.display === false) return
+      const { ctx, chartArea } = chart
+      if (!chartArea) return
+
+      const type = chart.config.type
+      const isCircular = ['pie', 'doughnut', 'polarArea'].includes(type)
+      const isBar = type === 'bar'
+      const isLine = type === 'line'
+      if (!isCircular && !isBar && !isLine) return
+
+      ctx.save()
+      ctx.font = options.font || "700 11px Poppins, 'Segoe UI', Arial, sans-serif"
+      ctx.textBaseline = 'middle'
+
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        const meta = chart.getDatasetMeta(datasetIndex)
+        if (!meta || meta.hidden) return
+
+        meta.data.forEach((element, dataIndex) => {
+          const parsed = meta.controller?.getParsed?.(dataIndex)
+          let rawValue
+
+          if (isCircular) rawValue = dataset.data?.[dataIndex]
+          else if (isBar && chart.options?.indexAxis === 'y') rawValue = parsed?.x ?? dataset.data?.[dataIndex]
+          else rawValue = parsed?.y ?? dataset.data?.[dataIndex]
+
+          if (rawValue && typeof rawValue === 'object') {
+            rawValue = rawValue.y ?? rawValue.x
+          }
+
+          const numeric = Number(rawValue)
+          if (!Number.isFinite(numeric)) return
+          if (numeric === 0 && options.hideZero !== false) return
+
+          const context = { chart, dataset, datasetIndex, dataIndex, raw: rawValue }
+          const text = typeof options.formatter === 'function'
+            ? String(options.formatter(rawValue, context) ?? '')
+            : `${formatNumber(numeric)}${options.suffix || ''}`
+          if (!text) return
+
+          const textWidth = ctx.measureText(text).width
+          const textHeight = 18
+
+          if (isCircular) {
+            const props = element.getProps(
+              ['x', 'y', 'startAngle', 'endAngle', 'innerRadius', 'outerRadius'],
+              true
+            )
+            const angle = (props.startAngle + props.endAngle) / 2
+            const arcSize = Math.abs(props.endAngle - props.startAngle)
+            const ringWidth = Math.max(0, props.outerRadius - props.innerRadius)
+            const canFitInside = arcSize >= 0.42 && ringWidth >= 20
+
+            let x
+            let y
+            if (canFitInside) {
+              const radius = props.innerRadius + ringWidth * 0.68
+              x = props.x + Math.cos(angle) * radius
+              y = props.y + Math.sin(angle) * radius
+              ctx.textAlign = 'center'
+              ctx.fillStyle = '#FFFFFF'
+              ctx.shadowColor = 'rgba(0,0,0,.20)'
+              ctx.shadowBlur = 3
+              ctx.fillText(text, x, y)
+              ctx.shadowBlur = 0
+            } else {
+              const radius = props.outerRadius + 13
+              x = props.x + Math.cos(angle) * radius
+              y = props.y + Math.sin(angle) * radius
+              x = Math.max(chartArea.left + textWidth / 2 + 5, Math.min(x, chartArea.right - textWidth / 2 - 5))
+              y = Math.max(chartArea.top + textHeight / 2 + 4, Math.min(y, chartArea.bottom - textHeight / 2 - 4))
+
+              ctx.textAlign = 'center'
+              ctx.fillStyle = 'rgba(255,255,255,.96)'
+              roundRect(ctx, x - textWidth / 2 - 6, y - textHeight / 2, textWidth + 12, textHeight, 8)
+              ctx.fill()
+              ctx.strokeStyle = 'rgba(31,41,55,.10)'
+              ctx.lineWidth = 1
+              ctx.stroke()
+              ctx.fillStyle = '#1F2937'
+              ctx.fillText(text, x, y)
+            }
+            return
+          }
+
+          if (isBar) {
+            const props = element.getProps(['x', 'y', 'base', 'width', 'height'], true)
+            const horizontal = chart.options?.indexAxis === 'y'
+
+            if (horizontal) {
+              const positive = numeric >= 0
+              let x = props.x + (positive ? 8 : -8)
+              const y = props.y
+              let inside = false
+
+              if (positive && x + textWidth > chartArea.right - 5) {
+                x = props.x - 8
+                inside = true
+                ctx.textAlign = 'right'
+              } else if (!positive && x - textWidth < chartArea.left + 5) {
+                x = props.x + 8
+                inside = true
+                ctx.textAlign = 'left'
+              } else {
+                ctx.textAlign = positive ? 'left' : 'right'
+              }
+
+              ctx.fillStyle = inside ? '#FFFFFF' : '#1F2937'
+              if (inside) {
+                ctx.shadowColor = 'rgba(0,0,0,.18)'
+                ctx.shadowBlur = 2
+              }
+              ctx.fillText(text, x, y)
+              ctx.shadowBlur = 0
+              return
+            }
+
+            const positive = numeric >= 0
+            let x = props.x
+            let y = props.y + (positive ? -10 : 10)
+            let inside = false
+            ctx.textAlign = 'center'
+
+            if (positive && y - 8 < chartArea.top) {
+              y = props.y + 12
+              inside = true
+            } else if (!positive && y + 8 > chartArea.bottom) {
+              y = props.y - 12
+              inside = true
+            }
+
+            y = Math.max(chartArea.top + 9, Math.min(y, chartArea.bottom - 9))
+            ctx.fillStyle = inside ? '#FFFFFF' : '#1F2937'
+            if (inside) {
+              ctx.shadowColor = 'rgba(0,0,0,.18)'
+              ctx.shadowBlur = 2
+            }
+            ctx.fillText(text, x, y)
+            ctx.shadowBlur = 0
+            return
+          }
+
+          // Linha: valor próximo do ponto, sem esconder a série.
+          const pos = element.getProps(['x', 'y'], true)
+          let x = Math.max(chartArea.left + textWidth / 2 + 4, Math.min(pos.x, chartArea.right - textWidth / 2 - 4))
+          let y = Math.max(chartArea.top + 10, pos.y - 12)
+          ctx.textAlign = 'center'
+          ctx.fillStyle = 'rgba(255,255,255,.94)'
+          roundRect(ctx, x - textWidth / 2 - 5, y - 9, textWidth + 10, 18, 7)
+          ctx.fill()
+          ctx.fillStyle = '#1F2937'
+          ctx.fillText(text, x, y)
+        })
+      })
+      ctx.restore()
+    }
+  }
+
+  const centerPlugin = {
+    id: 'nexoDoughnutCenter',
+    afterDraw(chart, _args, options = {}) {
+      if (options.display !== true || chart.config.type !== 'doughnut') return
+      const meta = chart.getDatasetMeta(0)
+      if (!meta?.data?.length) return
+
+      const values = chart.data.datasets?.[0]?.data || []
+      const total = values.reduce((sum, value) => sum + (Number(value) || 0), 0)
+      const first = meta.data[0]
+      const props = first.getProps(['x', 'y'], true)
+      const ctx = chart.ctx
+      const formatted = typeof options.formatter === 'function'
+        ? options.formatter(total, chart)
+        : `${formatNumber(total)}${options.suffix || ''}`
+
+      ctx.save()
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = '#7B7F88'
+      ctx.font = "600 10px Poppins, 'Segoe UI', Arial, sans-serif"
+      ctx.fillText(options.label || 'Total', props.x, props.y - 8)
+      ctx.fillStyle = '#1F2937'
+      ctx.font = "800 17px Poppins, 'Segoe UI', Arial, sans-serif"
+      ctx.fillText(String(formatted), props.x, props.y + 10)
+      ctx.restore()
+    }
+  }
+
+  Chart.register(valueLabelsPlugin, centerPlugin)
+
+  // Padrão global: qualquer Chart.js do NEXO já nasce com valor visível.
+  Chart.defaults.plugins.nexoValueLabels = { display: true, hideZero: true }
+  Chart.defaults.plugins.nexoDoughnutCenter = { display: false }
+}
+
+installNexoChartValueLabels()
+
 window.NEXO_MODULES = [
   { key: 'overview', label: 'Visão geral', group: 'GESTÃO OPERACIONAL' },
   { key: 'employees', label: 'Colaboradores', group: 'GESTÃO OPERACIONAL' },

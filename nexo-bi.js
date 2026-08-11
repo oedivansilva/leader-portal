@@ -36,15 +36,83 @@
     el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();handler(e)}})
   }
 
-  BI.renderDonut = function(canvasId,labels,data,title=''){
+  BI.renderDonut = function(canvasId,labels,data,title='',settings={}){
     if(!window.Chart) return
     const canvas = document.getElementById(canvasId)
     if(!canvas) return
+
+    const colors = settings.colors || ['#EE4D2D','#FFB000','#2EC4B6','#7C5CFC','#6F7480','#3B82F6','#22C55E','#0EA5E9']
+    const numericData = (data || []).map(value => Number(value) || 0)
+    const suffix = settings.suffix || ''
+    const format = value => {
+      const n = Number(value) || 0
+      const rendered = n.toLocaleString('pt-BR',{maximumFractionDigits:Number.isInteger(n)?0:1})
+      return `${rendered}${suffix}`
+    }
+
     BI.charts[canvasId]?.destroy()
     BI.charts[canvasId] = new Chart(canvas,{
       type:'doughnut',
-      data:{labels,datasets:[{data,backgroundColor:['#EE4D2D','#FFB000','#2EC4B6','#7C5CFC','#6F7480','#3B82F6'],borderWidth:0}]},
-      options:{responsive:true,maintainAspectRatio:false,cutout:'67%',plugins:{legend:{position:'bottom',labels:{boxWidth:9,font:{size:10}}},title:{display:false,text:title}}}
+      data:{
+        labels,
+        datasets:[{
+          data:numericData,
+          backgroundColor:labels.map((_,index)=>colors[index % colors.length]),
+          borderWidth:0,
+          hoverOffset:4
+        }]
+      },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        cutout:settings.cutout || '64%',
+        layout:{padding:{top:8,right:12,bottom:4,left:12}},
+        plugins:{
+          title:{display:false,text:title},
+          legend:{
+            position:settings.legendPosition || 'bottom',
+            labels:{
+              boxWidth:9,
+              boxHeight:9,
+              usePointStyle:true,
+              pointStyle:'circle',
+              padding:10,
+              font:{size:10},
+              generateLabels(chart){
+                const ds=chart.data.datasets[0]
+                return chart.data.labels.map((label,index)=>({
+                  text:`${label} (${format(ds.data[index])})`,
+                  fillStyle:ds.backgroundColor[index],
+                  strokeStyle:ds.backgroundColor[index],
+                  lineWidth:0,
+                  hidden:!chart.getDataVisibility(index),
+                  index
+                }))
+              }
+            }
+          },
+          nexoValueLabels:{
+            display:true,
+            hideZero:true,
+            formatter:value=>format(value)
+          },
+          nexoDoughnutCenter:{
+            display:settings.showTotal !== false,
+            label:settings.centerLabel || 'Total',
+            formatter:total=>format(total)
+          },
+          tooltip:{
+            callbacks:{
+              label(context){
+                const total=numericData.reduce((sum,value)=>sum+value,0)
+                const value=Number(context.raw)||0
+                const percent=total ? (value/total*100).toFixed(1).replace('.',',') : '0,0'
+                return `${context.label}: ${format(value)} (${percent}%)`
+              }
+            }
+          }
+        }
+      }
     })
   }
 
@@ -260,8 +328,8 @@
       BI.renderDonut('biPdiActions',['Pendentes','Em andamento','Concluídas'],[actions.filter(a=>!['in_progress','completed'].includes(a.status)).length,actions.filter(a=>a.status==='in_progress').length,actions.filter(a=>a.status==='completed').length])
     } else if(moduleKey==='people_analytics'){
       charts.innerHTML=chartCard('biPaClimate','Clima','Participação atual')+chartCard('biPaPerformance','Desempenho','Avaliações concluídas')
-      BI.renderDonut('biPaClimate',['Participação','Restante'],[state.climatePct||0,Math.max(0,100-(state.climatePct||0))])
-      BI.renderDonut('biPaPerformance',['Concluídas','Restante'],[state.performancePct||0,Math.max(0,100-(state.performancePct||0))])
+      BI.renderDonut('biPaClimate',['Participação','Restante'],[state.climatePct||0,Math.max(0,100-(state.climatePct||0))],'',{suffix:'%',centerLabel:'Base'})
+      BI.renderDonut('biPaPerformance',['Concluídas','Restante'],[state.performancePct||0,Math.max(0,100-(state.performancePct||0))],'',{suffix:'%',centerLabel:'Base'})
     }
   }
 

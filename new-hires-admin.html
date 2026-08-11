@@ -47,8 +47,9 @@
 
     /* Layout principal */
     .app {
-      display: flex;
-      align-items: flex-start;
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      align-items: start;
       min-height: calc(100vh - var(--nexo-header-height));
     }
 
