@@ -30,15 +30,19 @@ window.installNexoGlobalLayout = function(){
     }
 
     .app {
-      display: flex;
-      align-items: flex-start;
+      display: grid !important;
+      grid-template-columns: 250px minmax(0, 1fr) !important;
+      align-items: start !important;
       min-height: calc(100vh - var(--nexo-header-height));
     }
 
     .sidebar {
       position: sticky !important;
       top: var(--nexo-header-height) !important;
-      align-self: flex-start !important;
+      align-self: start !important;
+      width: 250px !important;
+      min-width: 250px !important;
+      max-width: 250px !important;
       height: calc(100vh - var(--nexo-header-height)) !important;
       max-height: calc(100vh - var(--nexo-header-height)) !important;
       overflow-y: auto !important;
@@ -62,7 +66,14 @@ window.installNexoGlobalLayout = function(){
     }
 
     @media (max-width: 900px) {
+      .app {
+        grid-template-columns: 1fr !important;
+      }
+
       .sidebar {
+        width: 260px !important;
+        min-width: 260px !important;
+        max-width: 260px !important;
         position: fixed !important;
         top: var(--nexo-header-height) !important;
         left: 0 !important;
