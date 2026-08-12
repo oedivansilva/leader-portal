@@ -49,7 +49,8 @@ async function loadDashboard() {
     daysResult,
     historyResult,
     absencesResult,
-    scalesResult
+    scalesResult,
+    sundayOffsResult
   ] = await Promise.all([
     db.from('disciplinary_metrics').select('*').gte('issue_date', start).lt('issue_date', end),
     db.from('disciplinary_requests').select('status,operation_id').gte('issue_date', start).lt('issue_date', end),
@@ -57,10 +58,11 @@ async function loadDashboard() {
     db.from('scale_work_days').select('*'),
     db.from('employee_scale_history').select('*').lte('effective_from', end).or(`effective_to.is.null,effective_to.gte.${start}`),
     db.from('attendance_absences').select('absence_type,absence_date,operation_id,employee_id').gte('absence_date', start).lt('absence_date', end),
-    db.from('work_scales').select('id,name,description').order('name')
+    db.from('work_scales').select('id,name,description').order('name'),
+    db.from('employee_sunday_offs').select('employee_id,off_date').gte('off_date', start).lt('off_date', end)
   ])
 
-  const results = [metricsResult, requestsResult, employeesResult, daysResult, historyResult, absencesResult, scalesResult]
+  const results = [metricsResult, requestsResult, employeesResult, daysResult, historyResult, absencesResult, scalesResult, sundayOffsResult]
   const error = results.find(result => result.error)?.error
   if (error) return alert(error.message)
 
@@ -99,6 +101,7 @@ async function loadDashboard() {
   const history = historyResult.data || []
   const employeeMap = new Map(employees.map(employee => [employee.id, employee]))
   const scaleMap = new Map(scales.map(scale => [scale.id, scale]))
+  const sundayOffKeys = new Set((sundayOffsResult.data || []).map(item => `${item.employee_id}|${item.off_date}`))
 
   const scaleAt = (employee, date) => history
     .filter(item => item.employee_id === employee.id && item.effective_from <= date && (!item.effective_to || item.effective_to >= date))
@@ -121,7 +124,8 @@ async function loadDashboard() {
         return
       }
       const weekdays = dayMap[currentScale] || []
-      if (weekdays.includes(date.getDay())) {
+      const agreedSundayOff = sundayOffKeys.has(`${employee.id}|${iso}`)
+      if (weekdays.includes(date.getDay()) && !agreedSundayOff) {
         planned++
         plannedEmployeeIds.add(employee.id)
 

@@ -346,6 +346,9 @@ window.NEXO_MODULES = [
   { key: 'mood', label: 'Humor', group: 'PESSOAS & DESENVOLVIMENTO' },
   { key: 'climate', label: 'Pesquisa de Clima', group: 'PESSOAS & DESENVOLVIMENTO' },
   { key: 'new_hires', label: 'Acompanhamento Inicial', group: 'PESSOAS & DESENVOLVIMENTO' },
+  { key: 'rh_listening', label: 'Escuta RH', group: 'PESSOAS & DESENVOLVIMENTO', roles: ['admin','onsite','employee'] },
+  { key: 'sociogram', label: 'Sociograma', group: 'PESSOAS & DESENVOLVIMENTO', roles: ['admin','onsite','employee'] },
+  { key: 'learning', label: 'Trilhas de Desenvolvimento', group: 'PESSOAS & DESENVOLVIMENTO', roles: ['admin','onsite','employee'] },
   { key: 'performance', label: 'Avaliação de Desempenho', group: 'PESSOAS & DESENVOLVIMENTO' },
   { key: 'pdi', label: 'PDI', group: 'PESSOAS & DESENVOLVIMENTO' },
   { key: 'people_analytics', label: 'People Analytics', group: 'PESSOAS & DESENVOLVIMENTO' },
@@ -363,8 +366,8 @@ window.moduleAvailableForRole = function(moduleOrKey, role){
 window.defaultMenuPermissions = function(role){
   if(role === 'admin') return NEXO_MODULES.filter(module => moduleAvailableForRole(module,'admin')).map(module => module.key)
   if(role === 'leader') return ['my_team','requests','presence','new_hires']
-  if(role === 'onsite') return ['requests']
-  if(role === 'employee') return ['mood','climate','new_hires','performance','pdi']
+  if(role === 'onsite') return ['requests','rh_listening','sociogram','learning']
+  if(role === 'employee') return ['mood','climate','new_hires','rh_listening','sociogram','learning','performance','pdi']
   return []
 }
 
@@ -389,6 +392,9 @@ window.moduleUrlForProfile = function(profile,moduleKey){
   if(moduleKey === 'new_hires') {
     return profile?.role === 'employee' ? 'new-hires.html' : 'new-hires-admin.html'
   }
+  if(moduleKey === 'rh_listening') return 'rh-listening.html'
+  if(moduleKey === 'sociogram') return 'sociogram.html'
+  if(moduleKey === 'learning') return 'learning.html'
   const peopleModules = ['mood','climate','performance','pdi','people_analytics']
   if(peopleModules.includes(moduleKey)) {
     return profile?.role === 'employee'
